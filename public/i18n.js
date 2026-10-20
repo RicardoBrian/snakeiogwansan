@@ -161,7 +161,11 @@
       readyWaiting: '아직 준비 안 함: {names}',
       adminReady: ' · 다음 라운드 준비 {n}/{m}',
       boardReady: '다음 라운드 준비 {n}/{m}명 — 모두 준비하면 자동 시작',
-      err_not_ready: '아직 모두 준비되지 않았습니다.'
+      err_not_ready: '아직 모두 준비되지 않았습니다.',
+      rmTitle: '🏁 라운드 {r} 끝!',
+      rmMine: '이번 라운드 {rank} · +{pts}점 (누적 {total}점)',
+      rmNoScore: '이번 라운드 기록 없음 (누적 {total}점)',
+      rmLater: '결과 먼저 볼게요'
     },
 
     en: {
@@ -318,7 +322,11 @@
       readyWaiting: 'Not ready yet: {names}',
       adminReady: ' · ready for next round {n}/{m}',
       boardReady: 'Ready for next round {n}/{m} — starts when everyone is ready',
-      err_not_ready: 'Not everyone is ready yet.'
+      err_not_ready: 'Not everyone is ready yet.',
+      rmTitle: '🏁 Round {r} over!',
+      rmMine: 'This round: {rank} · +{pts} pts ({total} total)',
+      rmNoScore: 'No score this round ({total} total)',
+      rmLater: 'Show me the results first'
     },
 
     zh: {
@@ -475,7 +483,11 @@
       readyWaiting: '尚未准备：{names}',
       adminReady: ' · 下一轮准备 {n}/{m}',
       boardReady: '下一轮准备 {n}/{m} 人 — 全部准备后自动开始',
-      err_not_ready: '还有人没有准备好。'
+      err_not_ready: '还有人没有准备好。',
+      rmTitle: '🏁 第 {r} 轮结束！',
+      rmMine: '本轮 {rank} · +{pts} 分（累计 {total} 分）',
+      rmNoScore: '本轮无成绩（累计 {total} 分）',
+      rmLater: '先看结果'
     },
 
     ru: {
@@ -632,7 +644,11 @@
       readyWaiting: 'Ещё не готовы: {names}',
       adminReady: ' · готовы к раунду {n}/{m}',
       boardReady: 'Готовы к следующему раунду: {n}/{m} — старт, когда готовы все',
-      err_not_ready: 'Ещё не все готовы.'
+      err_not_ready: 'Ещё не все готовы.',
+      rmTitle: '🏁 Раунд {r} окончен!',
+      rmMine: 'В этом раунде: {rank} · +{pts} очк. (всего {total})',
+      rmNoScore: 'В этом раунде нет результата (всего {total})',
+      rmLater: 'Сначала посмотрю итоги'
     }
   };
 

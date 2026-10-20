@@ -556,7 +556,7 @@
     me = null;
     roomView = null;
     attachWorld('');
-    for (const id of ['hud', 'dead', 'roomPanel', 'countdown']) $(id).classList.add('hidden');
+    for (const id of ['hud', 'dead', 'roomPanel', 'countdown', 'readyModal']) $(id).classList.add('hidden');
     $('login').classList.remove('hidden');
   }
 
@@ -712,6 +712,19 @@
 
     const canReady = st.phase === 'results' && st.round < total;
     $('readyBox').classList.toggle('hidden', !canReady);
+    // 아직 준비 안 했으면 팝업으로 물어봄 ('결과 먼저 볼게요'를 누르면 그 라운드에는 다시 안 뜸)
+    const info0 = canReady ? readyInfo() : null;
+    const showModal = canReady && roomView === 'panel' && !info0.mine && room.modalDismissed !== st.roundKey;
+    $('readyModal').classList.toggle('hidden', !showModal);
+    if (showModal) {
+      $('rmTitle').textContent = t('rmTitle', { r: st.round });
+      $('rmMine').textContent = myRes
+        ? t('rmMine', { rank: t('rankN', { n: myRes.rank }), pts: myRes.pts, total: myStand ? myStand.total : myRes.pts })
+        : t('rmNoScore', { total: myStand ? myStand.total : 0 });
+      let txt = t('readyCount', { n: info0.ready.length, m: info0.online.length });
+      if (info0.waiting.length && info0.waiting.length <= 8) txt += ' · ' + t('readyWaiting', { names: info0.waiting.join(', ') });
+      $('rmText').textContent = txt;
+    }
     if (canReady) {
       const info = readyInfo();
       const btn = $('readyBtn');
@@ -792,6 +805,10 @@
   });
   $('leaveBtn').addEventListener('click', () => leaveRoom(false));
   $('readyBtn').addEventListener('click', toggleReady);
+  $('rmReady').addEventListener('click', toggleReady);
+  $('rmLater').addEventListener('click', () => {
+    if (room && room.state) { room.modalDismissed = room.state.roundKey; renderRoom(); }
+  });
 
   // 명예의 전당
   let fame = [];

@@ -64,6 +64,18 @@ body.touch #help { left: 120px; bottom: 16px; }
 .code-input { text-align: center; font-size: 22px; font-weight: 700; letter-spacing: 6px; }
 .card.wide { max-width: 640px; }
 .ready-box { margin: 0 0 16px; }
+.ready-box button:not(.is-ready) { animation: pulse 1.6s ease-in-out infinite; }
+@keyframes pulse { 0%, 100% { box-shadow: 0 0 0 0 rgba(34,197,94,.55); } 50% { box-shadow: 0 0 0 10px rgba(34,197,94,0); } }
+/* 라운드 끝 '준비 완료' 팝업 */
+.modal { position: fixed; inset: 0; z-index: 15; display: flex; align-items: center; justify-content: center;
+  padding: 16px; background: rgba(5, 8, 14, .6); }
+.modal-card { width: 100%; max-width: 400px; background: #1b2436; border: 2px solid #22c55e; border-radius: 18px;
+  padding: 26px 24px; text-align: center; box-shadow: 0 24px 80px rgba(0,0,0,.6); animation: pop .25s ease-out; }
+.modal-card h2 { margin: 0 0 8px; font-size: 28px; }
+.rm-mine { margin: 0 0 18px; font-size: 18px; color: #4ade80; font-weight: 700; }
+.modal-card #rmReady { font-size: 19px; padding: 16px; animation: pulse 1.6s ease-in-out infinite; }
+.modal-card p.muted { margin: 12px 0 0; }
+@keyframes pop { from { transform: scale(.85); opacity: 0; } to { transform: scale(1); opacity: 1; } }
 .ready-box button.is-ready { background: #334155; color: #e8ecf4; }
 .ready-box p { margin: 8px 0 0; }
 .room-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-bottom: 12px;

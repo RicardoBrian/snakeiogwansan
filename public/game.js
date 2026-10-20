@@ -8,7 +8,8 @@
   const STALE_MS = 4000;         // 이 시간 동안 소식 없는 플레이어는 숨김
   const INTERP_DELAY = 150;      // 다른 플레이어를 이만큼 과거 시점으로 보간해서 그림
   const SPEED = 170, BOOST_SPEED = 340;
-  const START_MASS = 10, MIN_BOOST_MASS = 15, BOOST_COST = 3;
+  const START_MASS = 20, BOOST_FLOOR = 10, BOOST_RESUME = 13, BOOST_COST = 2;
+  const SAVE_INTERVAL = 5000;     // 게임 중 최고 점수 저장 주기(ms)
   const SP = 5;                  // 몸통 궤적 점 간격
   const SPAWN_GRACE = 1500;      // 시작 직후 무적 시간(ms)
   const HIDDEN_LIMIT = 3000;     // 다른 창으로 나가 있으면 탈락까지 시간(ms)
@@ -77,7 +78,7 @@
   let steerMode = 'mouse', keyLeft = false, keyRight = false;
   let boostKey = false, boostMouse = false;
   const cam = { x: WORLD / 2, y: WORLD / 2, scale: 0.6 };
-  let sendAcc = 0, boostDropAcc = 0, hostAcc = 0, hudAcc = 0;
+  let sendAcc = 0, boostDropAcc = 0, hostAcc = 0, hudAcc = 0, saveAcc = 0;
   let noticeSid = null, hiddenTimer = null;
 
   // ---------- 궤적(몸통) ----------
@@ -259,13 +260,14 @@
       if (ok) break;
     }
     me = { sid: profile.sid, name: profile.name, hue: hueOf(profile.sid), x, y, a: rand(-Math.PI, Math.PI),
-      mass: START_MASS, b: false, alive: true, spawnAt: now(), kills: 0, pts: [] };
+      mass: START_MASS, b: false, tired: false, alive: true, spawnAt: now(), kills: 0, pts: [],
+      peak: START_MASS, savedPeak: 0 };
     prefill(me);
     remotes.delete(me.sid);
     db.ref('players/' + me.sid).onDisconnect().remove();
     listenNotices();
     cam.x = me.x; cam.y = me.y;
-    sendAcc = SEND_INTERVAL; boostDropAcc = 0; hostAcc = 0;
+    sendAcc = SEND_INTERVAL; boostDropAcc = 0; hostAcc = 0; saveAcc = 0;
     steerMode = 'mouse';
     $('login').classList.add('hidden');
     $('dead').classList.add('hidden');
@@ -293,12 +295,15 @@
       const tx = mouse.x - innerWidth / 2, ty = mouse.y - innerHeight / 2;
       if (tx * tx + ty * ty > 64) m.a += clamp(angDiff(Math.atan2(ty, tx), m.a), -turn, turn);
     }
-    m.b = (boostKey || boostMouse) && m.mass > MIN_BOOST_MASS;
+    // 점수가 바닥(BOOST_FLOOR)까지 떨어지면 부스트가 꺼지고, BOOST_RESUME 이상 모여야 다시 켜짐 (깜빡임 방지)
+    if (m.mass <= BOOST_FLOOR) m.tired = true;
+    else if (m.tired && m.mass >= BOOST_RESUME) m.tired = false;
+    m.b = (boostKey || boostMouse) && !m.tired;
     const sp = m.b ? BOOST_SPEED : SPEED;
     m.x += Math.cos(m.a) * sp * dt;
     m.y += Math.sin(m.a) * sp * dt;
     if (m.b) {
-      m.mass -= BOOST_COST * dt;
+      m.mass = Math.max(BOOST_FLOOR, m.mass - BOOST_COST * dt);
       boostDropAcc += dt;
       if (boostDropAcc >= 0.5) {
         boostDropAcc = 0;
@@ -306,6 +311,7 @@
         spawnFood([{ x: tail.x, y: tail.y, v: 1, h: m.hue }]);
       }
     } else boostDropAcc = 0;
+    if (m.mass > m.peak) m.peak = m.mass;
     trailAdvance(m, m.x, m.y, lengthOf(m.mass));
 
     if (m.x < 0 || m.x > WORLD || m.y < 0 || m.y > WORLD) return die('벽에 부딪혔습니다!', null);
@@ -329,7 +335,7 @@
     if (!me || !me.alive) return;
     me.alive = false;
     clearTimeout(hiddenTimer);
-    const score = Math.floor(me.mass);
+    const score = Math.floor(me.peak);
     const upd = {};
     upd['players/' + me.sid] = null;
     if (dropFood) {
@@ -352,6 +358,16 @@
     $('deadBest').textContent = '...';
     $('hud').classList.add('hidden');
     $('dead').classList.remove('hidden');
+  }
+
+  // 게임 중에도 주기적으로 최고 점수 저장 (창을 닫거나 새로고침해도 기록이 남도록)
+  function savePeak() {
+    const score = Math.floor(me.peak);
+    if (score <= me.savedPeak) return;
+    me.savedPeak = score;
+    const sref = db.ref('scores/' + me.sid);
+    sref.update({ sid: me.sid, name: me.name });
+    sref.child('best').transaction((cur) => Math.max(+cur || 0, score));
   }
 
   function recordScore(score, killer) {
@@ -578,6 +594,9 @@
     if (me && me.alive) {
       $('scoreText').textContent = `점수 ${Math.floor(me.mass)}`;
       $('killText').textContent = `처치 ${me.kills}`;
+      const bt = $('boostText');
+      bt.textContent = me.tired ? '⚡ 부스트 충전 필요' : '⚡ 부스트 가능';
+      bt.className = me.tired ? 'off' : 'on';
     }
     $('onlineText').textContent = `접속 ${alive.length}명`;
 
@@ -603,6 +622,8 @@
       if (sendAcc >= SEND_INTERVAL && me.alive) { sendAcc = 0; sendState(); }
       hostAcc += ms;
       if (hostAcc >= 1000) { hostAcc = 0; hostTick(); }
+      saveAcc += ms;
+      if (saveAcc >= SAVE_INTERVAL && me.alive) { saveAcc = 0; savePeak(); }
     }
     const rt = now() - INTERP_DELAY;
     for (const r of remotes.values()) updateRemote(r, rt, dt);

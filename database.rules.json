@@ -13,9 +13,36 @@
       }
     },
     "scores": {
-      ".indexOn": ["best"],
+      ".indexOn": [
+        "best"
+      ],
       "$sid": {
-        ".write": true
+        ".write": "newData.exists() && (!data.child('best').exists() || newData.child('best').val() >= data.child('best').val()) && (!data.child('kills').exists() || newData.child('kills').val() >= data.child('kills').val()) && (!data.child('games').exists() || newData.child('games').val() >= data.child('games').val())",
+        ".validate": "$sid.matches(/^[0-9A-Za-z]{1,12}$/)",
+        "best": {
+          ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 5000"
+        },
+        "kills": {
+          ".validate": "newData.isNumber() && newData.val() <= (data.exists() ? data.val() : 0) + 1"
+        },
+        "games": {
+          ".validate": "newData.isNumber() && newData.val() <= (data.exists() ? data.val() : 0) + 1"
+        },
+        "last": {
+          ".validate": "newData.isNumber()"
+        },
+        "name": {
+          ".validate": "newData.isString() && newData.val().length <= 20"
+        },
+        "sid": {
+          ".validate": "newData.val() == $sid"
+        },
+        "ts": {
+          ".validate": "newData.isNumber()"
+        },
+        "$other": {
+          ".validate": false
+        }
       }
     },
     "notices": {

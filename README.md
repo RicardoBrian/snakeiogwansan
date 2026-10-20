@@ -19,6 +19,8 @@ server/                 Cloudflare 함수 공용 코드 (Firebase 호출, 구글
 public/board.html       전광판 (프로젝터용, /board?code=1234)
 public/omok.html        오목 리그 학생 화면 (/omok)
 public/_redirects       예전 관리자 주소 /admin → /
+public/admin.js         관리자 틀 (구글 로그인, 왼쪽 게임 메뉴, 주소 이동, 공용 도우미)
+public/snake-admin.js   관리자 — 뱀 게임 화면     public/omok-admin.js  관리자 — 오목 화면
 database.rules.json     Firebase 보안 규칙 (콘솔에 붙여넣기)
 ```
 
@@ -129,6 +131,19 @@ database.rules.json     Firebase 보안 규칙 (콘솔에 붙여넣기)
   컴퓨터를 바꿔야 하면 관리자 **등록한 학생** 표에서 **로그인 초기화** → 새 기기에서 같은 학번으로 입장하면 이어서 둡니다.
 - 수 두기·승패 판정은 모두 서버(Cloudflare)가 하므로 개발자 도구로 대국 결과를 조작할 수 없습니다.
 - ⚠️ `database.rules.json`이 바뀌었으니 **Firebase 콘솔 규칙 탭에 다시 붙여넣고 게시**하세요 (`omok`, `omokIndex` 추가).
+
+## 관리자 화면 구성
+- 왼쪽 **게임 메뉴**(🐍 뱀 게임, ⚫ 오목) → 위쪽에 학생 주소(복사/열기)와 하위 탭(뱀 게임: 대회 · 연습 모드)
+- 왼쪽 **목록**(상태 표시: 입장 대기/진행/종료 등) → 오른쪽 **상세**: 진행 단계, **다음 할 일**과 그 단계의 버튼, 순위·대국 표
+- 주소에 화면이 기억됩니다 (예: `/#omok/leagues/1234`). 새로고침하거나 그 주소를 북마크해도 같은 화면이 열립니다.
+
+### 새 게임 추가하기 (개발용)
+1. `public/새게임.html` (학생 화면, `/새게임` 주소로 열림)
+2. `public/index.html`에 `<section class="game" data-game="새게임"><div data-view="목록화면">…</div></section>`
+3. `public/새게임-admin.js`에서 `Admin.register({ id, icon, name, path, views, start(ctx), route(view, arg) })`
+   (`snake-admin.js`, `omok-admin.js`가 예시) → `index.html` 아래쪽 `<script>`에 추가
+4. 서버 작업이 필요하면 `server/새게임.js`에 관리자 작업을 만들고 `functions/api/admin.js`의 `ACTIONS`에 합치기
+5. 문구는 `admin-i18n.js` 같은 파일에 `I18N.extend({ ko: {...}, en: {...}, zh: {...}, ru: {...} })`
 
 ## 연습 모드
 - 로그인 화면의 **연습 모드로 하기** → 코드 없이 자유롭게 플레이 (기존 방식, 연습 최고 기록 TOP 10)

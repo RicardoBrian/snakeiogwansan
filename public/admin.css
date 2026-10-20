@@ -1,0 +1,134 @@
+/* 관리자 페이지: 왼쪽 게임 메뉴 + 게임별 화면(목록 | 상세) */
+* { box-sizing: border-box; }
+:root { --bg: #0b0f17; --panel: #161d2b; --panel2: #0f1522; --line: #2a3550; --line2: #253049; --text: #e8ecf4;
+  --sub: #9aa7c2; --muted: #6f7c98; --green: #22c55e; --red: #ef4444; --yellow: #fbbf24; --blue: #60a5fa; }
+body { margin: 0; background: var(--bg); color: var(--text); }
+a { color: var(--yellow); }
+h1, h2, h3 { margin: 0; }
+h2 { font-size: 17px; margin-bottom: 10px; }
+.hidden { display: none !important; }
+.muted { color: var(--muted); font-size: 13px; }
+.error { color: #ff7676; }
+.row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.spacer { flex: 1; }
+.scroll { overflow-x: auto; }
+
+button { padding: 9px 14px; border: 0; border-radius: 9px; font-weight: 700; font-size: 14px; cursor: pointer;
+  background: #334155; color: #fff; white-space: nowrap; }
+button:hover { filter: brightness(1.12); }
+button:disabled { opacity: .45; cursor: default; filter: none; }
+button.go { background: var(--green); color: #05210f; }
+button.stop { background: var(--red); }
+button.ghost { background: transparent; border: 1px solid var(--line); color: var(--sub); }
+button.danger-ghost { background: transparent; border: 1px solid #5b2330; color: #fca5a5; }
+button.small { padding: 5px 10px; font-size: 13px; }
+button.big { padding: 13px 22px; font-size: 16px; }
+button.on { outline: 2px solid var(--yellow); }
+select, input { padding: 9px 11px; border-radius: 9px; border: 1px solid #33405e; background: var(--panel2); color: #fff; font-size: 14px; }
+table { width: 100%; border-collapse: collapse; font-size: 14px; }
+th, td { padding: 7px 8px; border-bottom: 1px solid var(--line2); text-align: left; }
+th { color: var(--sub); font-weight: normal; }
+th.num, td.num { text-align: right; font-variant-numeric: tabular-nums; }
+tr.top1 td { color: var(--yellow); font-weight: 700; }
+tr.top2 td { color: #e5e7eb; font-weight: 700; }
+tr.top3 td { color: #d6a36a; font-weight: 700; }
+tr.sel td { background: #1f2840; }
+.panel { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 18px; margin-bottom: 16px; }
+
+/* ----- 로그인 ----- */
+.gate { max-width: 460px; margin: 12vh auto 0; padding: 0 16px; text-align: center; }
+.gate h1 { font-size: 28px; margin-bottom: 18px; }
+.gate .panel { text-align: left; }
+.gate .row { margin: 6px 0 10px; }
+
+/* ----- 전체 틀 ----- */
+.shell { display: grid; grid-template-columns: 220px minmax(0, 1fr); min-height: 100vh; }
+.side { background: #0f1420; border-right: 1px solid var(--line); padding: 18px 12px; display: flex; flex-direction: column; gap: 4px;
+  position: sticky; top: 0; height: 100vh; }
+.brand { font-size: 18px; font-weight: 700; padding: 4px 10px 16px; }
+.side-label { font-size: 12px; color: var(--muted); padding: 8px 10px 4px; }
+.nav-item { display: flex; align-items: center; gap: 10px; width: 100%; padding: 10px 12px; border-radius: 10px;
+  background: transparent; color: var(--sub); font-size: 15px; text-align: left; }
+.nav-item:hover { background: #1a2233; filter: none; }
+.nav-item.active { background: #1f2a40; color: #fff; box-shadow: inset 3px 0 0 var(--green); }
+.nav-icon { width: 22px; text-align: center; }
+.side-foot { margin-top: auto; padding: 10px; border-top: 1px solid var(--line); display: flex; flex-direction: column; gap: 8px; }
+.who { font-size: 13px; color: var(--sub); word-break: break-all; }
+.main { padding: 18px 24px 40px; min-width: 0; }
+
+/* ----- 게임 머리말 (이름, 학생 주소, 하위 탭) ----- */
+.game-head { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; padding-right: 200px; margin-bottom: 14px; min-height: 40px; }
+.game-title { font-size: 24px; font-weight: 700; }
+.url-chip { display: inline-flex; align-items: center; gap: 6px; background: var(--panel2); border: 1px solid var(--line);
+  border-radius: 999px; padding: 4px 6px 4px 12px; font-size: 13px; color: var(--sub); }
+.url-chip code { color: #fff; font-family: inherit; }
+.url-chip button { padding: 4px 10px; font-size: 12px; border-radius: 999px; }
+.subtabs { display: flex; gap: 4px; border-bottom: 1px solid var(--line); margin-bottom: 16px; }
+.subtabs button { background: transparent; color: var(--sub); border-radius: 0; padding: 10px 14px; border-bottom: 2px solid transparent; }
+.subtabs button.active { color: #fff; border-bottom-color: var(--green); }
+
+/* ----- 목록 | 상세 ----- */
+.split { display: grid; grid-template-columns: 290px minmax(0, 1fr); gap: 16px; align-items: start; }
+.list-pane { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 12px; position: sticky; top: 12px;
+  max-height: calc(100vh - 24px); overflow-y: auto; }
+.list-pane .new-btn { width: 100%; margin-bottom: 10px; }
+.cards { display: flex; flex-direction: column; gap: 6px; }
+.card { display: block; width: 100%; text-align: left; background: var(--panel2); border: 1px solid transparent; border-radius: 10px;
+  padding: 10px 12px; color: var(--text); font-weight: normal; }
+.card.sel { border-color: var(--green); background: #14241c; }
+.card-top { display: flex; align-items: center; gap: 8px; }
+.card-code { font-weight: 700; color: #fde047; letter-spacing: 1px; font-variant-numeric: tabular-nums; }
+.card-title { font-weight: 700; flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.card-sub { font-size: 12px; color: var(--muted); margin-top: 3px; }
+.badge { display: inline-block; font-size: 12px; font-weight: 700; padding: 2px 8px; border-radius: 999px; white-space: nowrap; }
+.badge.live { background: rgba(34, 197, 94, .18); color: #4ade80; }
+.badge.wait { background: rgba(251, 191, 36, .16); color: var(--yellow); }
+.badge.reg { background: rgba(96, 165, 250, .16); color: var(--blue); }
+.badge.done { background: rgba(148, 163, 184, .16); color: #cbd5e1; }
+.empty-state { border: 1px dashed var(--line); border-radius: 14px; padding: 48px 20px; text-align: center; color: var(--muted); }
+
+/* ----- 상세 ----- */
+.form { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 12px; align-items: end; margin-bottom: 8px; }
+.form label { display: flex; flex-direction: column; gap: 6px; font-size: 13px; color: var(--sub); }
+.form input { width: 100%; }
+.detail-head { display: flex; flex-wrap: wrap; gap: 18px; align-items: center; margin-bottom: 14px; }
+.code-box { text-align: center; }
+.big-code { font-size: 42px; font-weight: 700; letter-spacing: 6px; color: #fde047; line-height: 1.05; }
+.detail-title { font-size: 21px; font-weight: 700; }
+.timer { font-size: 30px; font-weight: 700; font-variant-numeric: tabular-nums; margin-left: auto; }
+.steps { display: flex; list-style: none; padding: 0; margin: 0 0 14px; gap: 6px; flex-wrap: wrap; }
+.steps li { flex: 1; min-width: 90px; padding: 8px 10px; border-radius: 9px; background: var(--panel2); color: var(--muted);
+  font-size: 13px; font-weight: 700; border: 1px solid transparent; }
+.steps li.done { color: #4ade80; }
+.steps li.done::before { content: '✓ '; }
+.steps li.now { color: #fff; border-color: var(--green); background: #14241c; }
+.next { background: var(--panel2); border: 1px solid var(--line); border-left: 4px solid var(--green); border-radius: 10px;
+  padding: 14px 16px; margin-bottom: 12px; }
+.next-label { font-size: 12px; color: var(--green); font-weight: 700; margin-bottom: 4px; }
+.next-text { margin-bottom: 10px; line-height: 1.5; }
+.tools { margin-bottom: 16px; }
+.section { margin-top: 18px; }
+.cols { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr); gap: 18px; }
+details.box { background: var(--panel2); border-radius: 10px; padding: 10px 14px; margin-top: 16px; }
+details.box summary { cursor: pointer; font-weight: 700; }
+#status { font-size: 18px; font-weight: 700; }
+#oGamesBody td { white-space: nowrap; }
+
+/* ----- 좁은 화면 ----- */
+@media (max-width: 1200px) {
+  .split { grid-template-columns: minmax(0, 1fr); }
+  .list-pane { position: static; max-height: 320px; }
+  .cols { grid-template-columns: minmax(0, 1fr); }
+}
+@media (max-width: 760px) {
+  .shell { grid-template-columns: minmax(0, 1fr); }
+  .side { position: static; height: auto; flex-direction: row; flex-wrap: wrap; align-items: center; padding: 52px 10px 8px; gap: 4px; }
+  .brand { padding: 0 8px; width: 100%; }
+  .side-label { display: none; }
+  .nav-item { width: auto; }
+  .nav-item.active { box-shadow: inset 0 -3px 0 var(--green); }
+  .side-foot { margin: 0 0 0 auto; border: 0; padding: 0; flex-direction: row; align-items: center; }
+  .main { padding: 14px 12px 32px; }
+  .game-head { padding-right: 0; }
+  .big-code { font-size: 34px; }
+}

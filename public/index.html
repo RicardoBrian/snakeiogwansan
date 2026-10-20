@@ -7,278 +7,277 @@
 <link rel="icon" href="data:,">
 <link rel="stylesheet" href="fonts/fonts.css">
 <link rel="stylesheet" href="common.css">
-<style>
-  * { box-sizing: border-box; }
-  body { margin: 0; background: #0b0f17; color: #e8ecf4; }
-  .wrap { max-width: 1100px; margin: 0 auto; padding: 24px 16px; }
-  .scroll { overflow-x: auto; }
-  h1 { margin: 0 0 16px; padding-right: 200px; }
-  @media (max-width: 600px) { h1 { padding-right: 0; margin-top: 36px; font-size: 24px; } }
-  h2 { margin: 0 0 10px; font-size: 18px; }
-  .panel { background: #161d2b; border: 1px solid #2a3550; border-radius: 14px; padding: 18px; margin-bottom: 16px; }
-  .row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
-  .grid { display: grid; grid-template-columns: 1fr 1.6fr; gap: 16px; }
-  @media (max-width: 800px) { .grid { grid-template-columns: 1fr; } }
-  button { padding: 10px 16px; border: 0; border-radius: 9px; font-weight: bold; font-size: 15px; cursor: pointer; background: #334155; color: #fff; }
-  button:disabled { opacity: .45; cursor: default; }
-  button.go { background: #22c55e; color: #05210f; }
-  button.stop { background: #ef4444; }
-  button.on { outline: 2px solid #fbbf24; }
-  button.small { padding: 6px 10px; font-size: 13px; }
-  select { padding: 8px 10px; border-radius: 9px; border: 1px solid #33405e; background: #0f1522; color: #fff; font-size: 14px; }
-  input { padding: 10px 12px; border-radius: 9px; border: 1px solid #33405e; background: #0f1522; color: #fff; font-size: 15px; }
-  table { width: 100%; border-collapse: collapse; font-size: 15px; }
-  th, td { padding: 7px 8px; border-bottom: 1px solid #253049; text-align: left; }
-  th { color: #9aa7c2; font-weight: normal; }
-  th.num, td.num { text-align: right; font-variant-numeric: tabular-nums; }
-  tr.top1 td { color: #fbbf24; font-weight: bold; }
-  tr.top2 td { color: #e5e7eb; font-weight: bold; }
-  tr.top3 td { color: #d6a36a; font-weight: bold; }
-  tr.sel td { background: #1f2840; }
-  #status { font-size: 18px; font-weight: bold; }
-  .muted { color: #6f7c98; font-size: 13px; }
-  .hidden { display: none !important; }
-
-  .tabs { display: flex; gap: 6px; margin-bottom: 16px; }
-  .tabs button { background: #161d2b; border: 1px solid #2a3550; color: #9aa7c2; }
-  .tabs button.active { background: #22c55e; color: #05210f; border-color: #22c55e; }
-  .form { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 12px; align-items: end; }
-  .form label { display: flex; flex-direction: column; gap: 6px; font-size: 13px; color: #9aa7c2; }
-  .form input { width: 100%; }
-  .detail-head { display: flex; flex-wrap: wrap; gap: 16px; align-items: center; margin-bottom: 14px; }
-  .big-code { font-size: 44px; font-weight: 700; letter-spacing: 8px; color: #fde047; line-height: 1; }
-  .phase { font-size: 18px; font-weight: 700; }
-  .timer { font-size: 28px; font-weight: 700; font-variant-numeric: tabular-nums; }
-  .error { color: #ff7676; }
-  a { color: #fbbf24; }
-  .omok-grid { grid-template-columns: 1.3fr 1fr; }
-  @media (max-width: 1000px) { .omok-grid { grid-template-columns: 1fr; } }
-  #oGamesBody td { white-space: nowrap; }
-</style>
+<link rel="stylesheet" href="admin.css">
 </head>
 <body>
-<div class="wrap">
-  <h1 data-i18n="adminTitle"></h1>
 
-  <div id="gate" class="panel">
+<!-- ===== 로그인 ===== -->
+<div id="gate" class="gate">
+  <h1 data-i18n="adminTitle"></h1>
+  <div class="panel">
     <h2 data-i18n="loginTitle"></h2>
     <div class="row">
-      <button id="googleBtn" class="go" type="button" data-i18n="googleSignIn"></button>
-      <button id="gateSignOut" class="hidden" type="button" data-i18n="signOut"></button>
-      <span id="gateErr" class="error"></span>
+      <button id="googleBtn" class="go big" type="button" data-i18n="googleSignIn"></button>
+      <button id="gateSignOut" class="ghost hidden" type="button" data-i18n="signOut"></button>
     </div>
+    <p id="gateErr" class="error"></p>
     <p class="muted" data-i18n="loginHint"></p>
-    <p class="muted"><a href="snake" data-i18n="linkSnake"></a> · <a href="omok" data-i18n="linkOmok"></a></p>
   </div>
+</div>
 
-  <div id="main" class="hidden">
-    <div class="row" style="margin-bottom:12px">
-      <span id="whoText" class="muted"></span>
-      <button id="signOutBtn" class="small" type="button" data-i18n="signOut"></button>
-      <span style="flex:1"></span>
-      <a href="snake" target="_blank" data-i18n="linkSnake"></a>
-      <a href="omok" target="_blank" data-i18n="linkOmok"></a>
+<!-- ===== 관리 화면: 왼쪽 게임 메뉴 + 게임별 화면 =====
+     새 게임 추가: 아래에 <section class="game" data-game="아이디"> 를 만들고, 그 게임의 *-admin.js 에서 Admin.register(...) -->
+<div id="main" class="shell hidden">
+  <nav class="side">
+    <div class="brand" data-i18n="adminTitle"></div>
+    <div class="side-label" data-i18n="navGames"></div>
+    <div id="gameNav"></div>
+    <div class="side-foot">
+      <span id="whoText" class="who"></span>
+      <button id="signOutBtn" class="ghost small" type="button" data-i18n="signOut"></button>
     </div>
-    <div class="tabs">
-      <button id="tabRoomBtn" class="active" data-i18n="tabRoom"></button>
-      <button id="tabOmokBtn" data-i18n="tabOmok"></button>
-      <button id="tabPracticeBtn" data-i18n="tabPractice"></button>
+  </nav>
+
+  <main class="main">
+    <!-- 게임 이름, 학생 주소, 하위 탭은 admin.js 가 채움 -->
+    <div class="game-head">
+      <span id="gameTitle" class="game-title"></span>
+      <span class="url-chip"><span data-i18n="studentUrl"></span> <code id="gameUrl"></code>
+        <button id="gameUrlCopy" type="button" data-i18n="copy"></button>
+        <button id="gameUrlOpen" type="button" class="ghost" data-i18n="openPage"></button>
+      </span>
     </div>
+    <div id="subtabs" class="subtabs"></div>
 
-    <!-- ===== 대회 관리 ===== -->
-    <div id="tabRoom">
-      <div class="panel">
-        <h2 data-i18n="createTitle"></h2>
-        <form id="createForm" class="form">
-          <label><span data-i18n="fName"></span><input id="fName" maxlength="30" required></label>
-          <label><span data-i18n="fRounds"></span><input id="fRounds" type="number" min="1" max="20" value="5" required></label>
-          <label><span data-i18n="fDuration"></span><input id="fDuration" type="number" min="0.5" max="30" step="0.5" value="3" required></label>
-          <label><span data-i18n="fPoints"></span><input id="fPoints" value="25,18,15,12,10,8,6,4,2,1" required></label>
-          <label><span data-i18n="fKillBonus"></span><input id="fKillBonus" type="number" min="0" max="10" value="0" required></label>
-          <button class="go" type="submit" data-i18n="createBtn"></button>
-        </form>
-        <p class="muted" data-i18n="pointsHint"></p>
-      </div>
-
-      <div class="panel">
-        <h2 data-i18n="roomList"></h2>
-        <div class="scroll"><table>
-          <thead><tr><th data-i18n="colCode"></th><th data-i18n="colGameName"></th><th class="num" data-i18n="colRounds"></th><th data-i18n="colCreated"></th><th></th></tr></thead>
-          <tbody id="roomBody"></tbody>
-        </table></div>
-        <p id="noRooms" class="muted" data-i18n="noRooms"></p>
-      </div>
-
-      <div id="detail" class="panel hidden">
-        <div class="detail-head">
+    <!-- ================= 🐍 뱀 게임 ================= -->
+    <section class="game" data-game="snake">
+      <!-- 대회 (게임방) -->
+      <div data-view="rooms">
+        <div class="split">
+          <aside class="list-pane">
+            <button id="sNewBtn" class="go new-btn" type="button" data-i18n="sNew"></button>
+            <div id="roomCards" class="cards"></div>
+            <p id="noRooms" class="muted" data-i18n="noRooms"></p>
+          </aside>
           <div>
-            <div class="muted" data-i18n="joinCode"></div>
-            <div id="dCode" class="big-code"></div>
-          </div>
-          <div style="flex:1; min-width: 200px">
-            <div id="dName" style="font-size:20px;font-weight:700"></div>
-            <div id="dPhase" class="phase"></div>
-            <div id="dInfo" class="muted"></div>
-          </div>
-          <div id="dTimer" class="timer"></div>
-        </div>
-        <div class="row">
-          <button id="startRoundBtn" class="go"></button>
-          <button id="endNowBtn" class="stop" data-i18n="endNow"></button>
-          <button id="finishBtn" class="hidden" data-i18n="finishNow"></button>
-          <button id="boardBtn" data-i18n="openBoard"></button>
-          <button id="roomCsvBtn" data-i18n="csv"></button>
-        </div>
-        <p class="muted" data-i18n="autoHint"></p>
+            <div id="sEmpty" class="empty-state" data-i18n="pickHint"></div>
 
-        <div class="grid" style="margin-top:12px">
-          <div>
-            <h2 id="liveTitle"></h2>
-            <div class="scroll"><table>
-              <thead><tr><th>#</th><th data-i18n="colSid"></th><th data-i18n="colName"></th><th class="num" data-i18n="colBest"></th><th class="num" data-i18n="colKills"></th></tr></thead>
-              <tbody id="liveRoundBody"></tbody>
-            </table></div>
-          </div>
-          <div>
-            <h2 data-i18n="standings"></h2>
-            <div class="scroll"><table>
-              <thead id="standHead"></thead>
-              <tbody id="standBody"></tbody>
-            </table></div>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- ===== 오목 리그 ===== -->
-    <div id="tabOmok" class="hidden">
-      <div class="panel">
-        <h2 data-i18n="oCreateTitle"></h2>
-        <form id="oCreateForm" class="form">
-          <label><span data-i18n="oFName"></span><input id="oName" maxlength="30" required></label>
-          <label><span data-i18n="oFMoveTime"></span><input id="oMoveTime" type="number" min="5" max="600" value="30" required></label>
-          <label><span data-i18n="oFWin"></span><input id="oWin" type="number" min="0" max="100" value="3" required></label>
-          <label><span data-i18n="oFDraw"></span><input id="oDraw" type="number" min="0" max="100" value="1" required></label>
-          <label><span data-i18n="oFLoss"></span><input id="oLoss" type="number" min="0" max="100" value="0" required></label>
-          <button class="go" type="submit" data-i18n="oCreateBtn"></button>
-        </form>
-        <p class="muted" data-i18n="oCreateHint"></p>
-      </div>
-
-      <div class="panel">
-        <h2 data-i18n="oListTitle"></h2>
-        <div class="scroll"><table>
-          <thead><tr><th data-i18n="colCode"></th><th data-i18n="colGameName"></th><th data-i18n="colCreated"></th><th></th></tr></thead>
-          <tbody id="oListBody"></tbody>
-        </table></div>
-        <p id="oNoLeagues" class="muted" data-i18n="oNoLeagues"></p>
-      </div>
-
-      <div id="oDetail" class="panel hidden">
-        <div class="detail-head">
-          <div>
-            <div class="muted" data-i18n="joinCode"></div>
-            <div id="oCode" class="big-code"></div>
-          </div>
-          <div style="flex:1; min-width: 200px">
-            <div id="oDName" style="font-size:20px;font-weight:700"></div>
-            <div id="oPhase" class="phase"></div>
-            <div id="oLink" class="muted"></div>
-          </div>
-        </div>
-        <div class="row">
-          <button id="oScheduleBtn" class="go"></button>
-          <button id="oReopenBtn" data-i18n="oReopenBtn"></button>
-          <button id="oStartBtn" class="go"></button>
-          <button id="oEndBtn" class="stop"></button>
-          <button id="oCsvBtn" data-i18n="csv"></button>
-        </div>
-
-        <div class="grid omok-grid" style="margin-top:16px">
-          <div>
-            <div class="row" style="margin-bottom:8px">
-              <h2 style="margin:0" data-i18n="oGamesOf"></h2>
-              <select id="oRoundSel"></select>
-              <span id="oByeText" class="muted"></span>
+            <div id="sCreate" class="panel hidden">
+              <h2 data-i18n="createTitle"></h2>
+              <form id="createForm" class="form">
+                <label><span data-i18n="fName"></span><input id="fName" maxlength="30" required></label>
+                <label><span data-i18n="fRounds"></span><input id="fRounds" type="number" min="1" max="20" value="5" required></label>
+                <label><span data-i18n="fDuration"></span><input id="fDuration" type="number" min="0.5" max="30" step="0.5" value="3" required></label>
+                <label><span data-i18n="fPoints"></span><input id="fPoints" value="25,18,15,12,10,8,6,4,2,1" required></label>
+                <label><span data-i18n="fKillBonus"></span><input id="fKillBonus" type="number" min="0" max="10" value="0" required></label>
+              </form>
+              <div class="row">
+                <button class="go" type="submit" form="createForm" data-i18n="createBtn"></button>
+                <button id="sCreateCancel" class="ghost" type="button" data-i18n="cancel"></button>
+              </div>
+              <p class="muted" data-i18n="pointsHint"></p>
             </div>
-            <div class="scroll"><table>
-              <thead><tr><th>#</th><th data-i18n="oColBlack"></th><th data-i18n="oColWhite"></th><th class="num" data-i18n="oColMoves"></th><th data-i18n="oColState"></th><th></th></tr></thead>
-              <tbody id="oGamesBody"></tbody>
-            </table></div>
-            <p id="oNoSchedule" class="muted" data-i18n="oNoSchedule"></p>
-            <p class="muted" data-i18n="oManualHint"></p>
-            <div id="oViewer" class="hidden" style="margin-top:12px">
-              <h2 id="oViewerTitle"></h2>
-              <canvas id="oViewerCv" style="width:min(100%, 460px); aspect-ratio:1; border-radius:8px; display:block"></canvas>
+
+            <div id="detail" class="panel hidden">
+              <div class="detail-head">
+                <div class="code-box">
+                  <div class="muted" data-i18n="joinCode"></div>
+                  <div id="dCode" class="big-code"></div>
+                </div>
+                <div style="flex:1; min-width: 200px">
+                  <div class="row"><span id="dName" class="detail-title"></span><span id="dBadge" class="badge"></span></div>
+                  <div id="dInfo" class="muted"></div>
+                </div>
+                <div id="dTimer" class="timer"></div>
+              </div>
+              <ol id="sSteps" class="steps"></ol>
+              <div class="next">
+                <div class="next-label" data-i18n="nextLabel"></div>
+                <div id="dPhase" class="next-text"></div>
+                <div class="row">
+                  <button id="startRoundBtn" class="go big"></button>
+                  <button id="endNowBtn" class="stop big" data-i18n="endNow"></button>
+                  <button id="finishBtn" class="hidden" data-i18n="finishNow"></button>
+                </div>
+              </div>
+              <div class="row tools">
+                <button id="sLinkBtn" class="ghost" data-i18n="copyJoinLink"></button>
+                <button id="boardBtn" class="ghost" data-i18n="openBoard"></button>
+                <button id="roomCsvBtn" class="ghost" data-i18n="csv"></button>
+                <span class="spacer"></span>
+                <button id="sDeleteBtn" class="danger-ghost small" data-i18n="delete"></button>
+              </div>
+              <p class="muted" data-i18n="autoHint"></p>
+
+              <div class="cols section">
+                <div>
+                  <h2 id="liveTitle"></h2>
+                  <div class="scroll"><table>
+                    <thead><tr><th>#</th><th data-i18n="colSid"></th><th data-i18n="colName"></th><th class="num" data-i18n="colBest"></th><th class="num" data-i18n="colKills"></th></tr></thead>
+                    <tbody id="liveRoundBody"></tbody>
+                  </table></div>
+                </div>
+                <div>
+                  <h2 data-i18n="standings"></h2>
+                  <div class="scroll"><table>
+                    <thead id="standHead"></thead>
+                    <tbody id="standBody"></tbody>
+                  </table></div>
+                </div>
+              </div>
             </div>
           </div>
+        </div>
+      </div>
+
+      <!-- 연습 모드 -->
+      <div data-view="practice">
+        <div class="panel">
+          <div class="row">
+            <span id="status" data-i18n="statusChecking"></span>
+            <span class="spacer"></span>
+            <button id="openBtn" class="go" data-i18n="startRound"></button>
+            <button id="lockBtn" class="stop" data-i18n="endRound"></button>
+          </div>
+          <p class="muted" data-i18n="roundHint"></p>
+        </div>
+        <div class="cols">
+          <div class="panel">
+            <h2><span data-i18n="livePlayers"></span> <span id="liveCount" class="muted"></span></h2>
+            <div class="scroll"><table><thead><tr><th>#</th><th data-i18n="colSid"></th><th data-i18n="colName"></th><th class="num" data-i18n="colScore"></th></tr></thead><tbody id="liveBody"></tbody></table></div>
+          </div>
+          <div class="panel">
+            <div class="row" style="margin-bottom:10px">
+              <h2 style="margin:0" data-i18n="ranking"></h2>
+              <span class="spacer"></span>
+              <button id="sortBest" class="small on" data-i18n="sortBest"></button>
+              <button id="sortKills" class="small" data-i18n="sortKills"></button>
+              <button id="csvBtn" class="small ghost" data-i18n="csv"></button>
+            </div>
+            <div class="scroll"><table><thead><tr><th data-i18n="colRank"></th><th data-i18n="colSid"></th><th data-i18n="colName"></th><th class="num" data-i18n="colBest"></th><th class="num" data-i18n="colKills"></th><th class="num" data-i18n="colGames"></th></tr></thead><tbody id="rankBody"></tbody></table></div>
+          </div>
+        </div>
+        <div class="panel">
+          <h2 data-i18n="manage"></h2>
+          <div class="row">
+            <button id="clearFood" class="ghost" data-i18n="clearFood"></button>
+            <button id="clearScores" class="danger-ghost" data-i18n="resetScores"></button>
+          </div>
+          <p class="muted" data-i18n="resetHint"></p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ================= ⚫ 오목 ================= -->
+    <section class="game" data-game="omok">
+      <div data-view="leagues">
+        <div class="split">
+          <aside class="list-pane">
+            <button id="oNewBtn" class="go new-btn" type="button" data-i18n="oNew"></button>
+            <div id="oCards" class="cards"></div>
+            <p id="oNoLeagues" class="muted" data-i18n="oNoLeagues"></p>
+          </aside>
           <div>
-            <h2 data-i18n="oStandings"></h2>
-            <div class="scroll"><table>
-              <thead><tr><th>#</th><th data-i18n="colSid"></th><th data-i18n="colName"></th><th class="num" data-i18n="oColP"></th><th class="num" data-i18n="oColW"></th><th class="num" data-i18n="oColD"></th><th class="num" data-i18n="oColL"></th><th class="num" data-i18n="oColPts"></th></tr></thead>
-              <tbody id="oStandBody"></tbody>
-            </table></div>
-            <p class="muted" data-i18n="oTieHint"></p>
+            <div id="oEmpty" class="empty-state" data-i18n="pickHint"></div>
+
+            <div id="oCreate" class="panel hidden">
+              <h2 data-i18n="oCreateTitle"></h2>
+              <form id="oCreateForm" class="form">
+                <label><span data-i18n="oFName"></span><input id="oName" maxlength="30" required></label>
+                <label><span data-i18n="oFMoveTime"></span><input id="oMoveTime" type="number" min="5" max="600" value="30" required></label>
+                <label><span data-i18n="oFWin"></span><input id="oWin" type="number" min="0" max="100" value="3" required></label>
+                <label><span data-i18n="oFDraw"></span><input id="oDraw" type="number" min="0" max="100" value="1" required></label>
+                <label><span data-i18n="oFLoss"></span><input id="oLoss" type="number" min="0" max="100" value="0" required></label>
+              </form>
+              <div class="row">
+                <button class="go" type="submit" form="oCreateForm" data-i18n="oCreateBtn"></button>
+                <button id="oCreateCancel" class="ghost" type="button" data-i18n="cancel"></button>
+              </div>
+              <p class="muted" data-i18n="oCreateHint"></p>
+            </div>
+
+            <div id="oDetail" class="panel hidden">
+              <div class="detail-head">
+                <div class="code-box">
+                  <div class="muted" data-i18n="joinCode"></div>
+                  <div id="oCode" class="big-code"></div>
+                </div>
+                <div style="flex:1; min-width: 200px">
+                  <div class="row"><span id="oDName" class="detail-title"></span><span id="oBadge" class="badge"></span></div>
+                  <div id="oInfo" class="muted"></div>
+                </div>
+              </div>
+              <ol id="oSteps" class="steps"></ol>
+              <div class="next">
+                <div class="next-label" data-i18n="nextLabel"></div>
+                <div id="oPhase" class="next-text"></div>
+                <div class="row">
+                  <button id="oScheduleBtn" class="go big"></button>
+                  <button id="oStartBtn" class="go big"></button>
+                  <button id="oEndBtn" class="stop big"></button>
+                  <button id="oReshuffleBtn" class="ghost" data-i18n="oReshuffleBtn"></button>
+                  <button id="oReopenBtn" class="ghost" data-i18n="oReopenBtn"></button>
+                </div>
+              </div>
+              <div class="row tools">
+                <button id="oLinkBtn" class="ghost" data-i18n="copyJoinLink"></button>
+                <button id="oCsvBtn" class="ghost" data-i18n="csv"></button>
+                <span class="spacer"></span>
+                <button id="oDeleteBtn" class="danger-ghost small" data-i18n="delete"></button>
+              </div>
+
+              <div id="oPlay" class="cols section">
+                <div>
+                  <div class="row" style="margin-bottom:8px">
+                    <h2 style="margin:0" data-i18n="oGamesOf"></h2>
+                    <select id="oRoundSel"></select>
+                    <span id="oByeText" class="muted"></span>
+                  </div>
+                  <div class="scroll"><table>
+                    <thead><tr><th>#</th><th data-i18n="oColBlack"></th><th data-i18n="oColWhite"></th><th class="num" data-i18n="oColMoves"></th><th data-i18n="oColState"></th><th></th></tr></thead>
+                    <tbody id="oGamesBody"></tbody>
+                  </table></div>
+                  <p class="muted" data-i18n="oManualHint"></p>
+                  <div id="oViewer" class="hidden" style="margin-top:12px">
+                    <h2 id="oViewerTitle"></h2>
+                    <canvas id="oViewerCv" style="width:min(100%, 440px); aspect-ratio:1; border-radius:8px; display:block"></canvas>
+                  </div>
+                </div>
+                <div>
+                  <h2 data-i18n="oStandings"></h2>
+                  <div class="scroll"><table>
+                    <thead><tr><th>#</th><th data-i18n="colSid"></th><th data-i18n="colName"></th><th class="num" data-i18n="oColP"></th><th class="num" data-i18n="oColW"></th><th class="num" data-i18n="oColD"></th><th class="num" data-i18n="oColL"></th><th class="num" data-i18n="oColPts"></th></tr></thead>
+                    <tbody id="oStandBody"></tbody>
+                  </table></div>
+                  <p class="muted" data-i18n="oTieHint"></p>
+                </div>
+              </div>
+
+              <details id="oMembersBox" class="box" open>
+                <summary id="oMembersTitle"></summary>
+                <div class="scroll"><table>
+                  <thead><tr><th data-i18n="colSid"></th><th data-i18n="colName"></th><th data-i18n="oColLogin"></th><th></th></tr></thead>
+                  <tbody id="oMembersBody"></tbody>
+                </table></div>
+              </details>
+            </div>
           </div>
         </div>
-
-        <h2 id="oMembersTitle" style="margin-top:16px"></h2>
-        <div class="scroll"><table>
-          <thead><tr><th data-i18n="colSid"></th><th data-i18n="colName"></th><th data-i18n="oColLogin"></th><th></th></tr></thead>
-          <tbody id="oMembersBody"></tbody>
-        </table></div>
       </div>
-    </div>
-
-    <!-- ===== 연습 모드 ===== -->
-    <div id="tabPractice" class="hidden">
-      <div class="panel">
-        <div class="row">
-          <span id="status" data-i18n="statusChecking"></span>
-          <span style="flex:1"></span>
-          <button id="openBtn" class="go" data-i18n="startRound"></button>
-          <button id="lockBtn" class="stop" data-i18n="endRound"></button>
-        </div>
-        <p class="muted" data-i18n="roundHint"></p>
-      </div>
-
-      <div class="grid">
-        <div class="panel">
-          <h2><span data-i18n="livePlayers"></span> <span id="liveCount" class="muted"></span></h2>
-          <div class="scroll"><table><thead><tr><th>#</th><th data-i18n="colSid"></th><th data-i18n="colName"></th><th class="num" data-i18n="colScore"></th></tr></thead><tbody id="liveBody"></tbody></table></div>
-        </div>
-        <div class="panel">
-          <div class="row" style="margin-bottom:10px">
-            <h2 style="margin:0" data-i18n="ranking"></h2>
-            <span style="flex:1"></span>
-            <button id="sortBest" class="on" data-i18n="sortBest"></button>
-            <button id="sortKills" data-i18n="sortKills"></button>
-            <button id="csvBtn" data-i18n="csv"></button>
-          </div>
-          <div class="scroll"><table><thead><tr><th data-i18n="colRank"></th><th data-i18n="colSid"></th><th data-i18n="colName"></th><th class="num" data-i18n="colBest"></th><th class="num" data-i18n="colKills"></th><th class="num" data-i18n="colGames"></th></tr></thead><tbody id="rankBody"></tbody></table></div>
-        </div>
-      </div>
-
-      <div class="panel">
-        <h2 data-i18n="manage"></h2>
-        <div class="row">
-          <button id="clearFood" data-i18n="clearFood"></button>
-          <button id="clearScores" class="stop" data-i18n="resetScores"></button>
-        </div>
-        <p class="muted" data-i18n="resetHint"></p>
-      </div>
-    </div>
-  </div>
+    </section>
+  </main>
 </div>
 
 <script src="i18n.js"></script>
 <script src="omok-i18n.js"></script>
+<script src="admin-i18n.js"></script>
 <script src="lib/firebase-app-compat.js"></script>
 <script src="lib/firebase-database-compat.js"></script>
 <script src="lib/firebase-auth-compat.js"></script>
 <script src="api/config"></script>
 <script src="omok-core.js"></script>
 <script src="admin.js"></script>
+<script src="snake-admin.js"></script>
 <script src="omok-admin.js"></script>
 </body>
 </html>

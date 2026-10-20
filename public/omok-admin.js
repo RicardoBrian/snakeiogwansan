@@ -1,52 +1,65 @@
-// 관리자 페이지 — 오목 리그 탭 (로그인/DB 는 admin.js 가 준비한 것을 'adminstart' 로 받음)
-addEventListener('adminstart', (ev) => {
+// 관리자 페이지 — ⚫ 오목 리그
+Admin.register((() => {
   'use strict';
-  const { db, now, run, fill, downloadCsv } = ev.detail;
-  const $ = (id) => document.getElementById(id);
-  const t = (k, p) => I18N.t(k, p);
+  let $, t, db, now, run, fill, downloadCsv, X;
   const C = OmokCore;
 
-  // ----- 리그 만들기 -----
-  $('oCreateForm').addEventListener('submit', async (e) => {
-    e.preventDefault();
-    const btn = $('oCreateForm').querySelector('button');
-    btn.disabled = true;
-    const r = await run('omokCreate', {
-      name: $('oName').value.trim(),
-      moveTime: Number($('oMoveTime').value),
-      win: Number($('oWin').value), draw: Number($('oDraw').value), loss: Number($('oLoss').value)
-    });
-    btn.disabled = false;
-    if (r.ok) { $('oName').value = ''; select(r.code); }
-  });
+  let index = {}, states = {}, stateRefs = {};
+  let sel = null, mode = 'empty', refs = [], L = null, viewMid = null, viewRound = 0, lastPhase = null;
 
-  // ----- 리그 목록 -----
-  let index = {}, sel = null, refs = [], L = null, viewMid = null, viewRound = 0;
-  db.ref('omokIndex').on('value', (s) => { index = s.val() || {}; renderList(); });
+  function phaseBadge(st, members) {
+    const ph = (st && st.phase) || 'register', r = (st && st.round) || 0;
+    if (ph === 'register') return { text: t('bRegister'), tone: 'reg' };
+    if (ph === 'ready') return { text: t('bReady'), tone: 'wait' };
+    if (ph === 'round') return { text: t('bRoundShort', { r }), tone: 'live' };
+    if (ph === 'results') return { text: t('bResultsShort', { r }), tone: 'wait' };
+    return { text: t('bFinished'), tone: 'done' };
+  }
+
+  function startLeagues() {
+    // ----- 목록 (상태 표시를 위해 리그마다 state 도 구독) -----
+    db.ref('omokIndex').on('value', (s) => {
+      index = s.val() || {};
+      for (const code of Object.keys(stateRefs)) if (!index[code]) { stateRefs[code].off(); delete stateRefs[code]; delete states[code]; }
+      for (const code of Object.keys(index)) {
+        if (stateRefs[code]) continue;
+        stateRefs[code] = db.ref(`omok/${code}/state`);
+        stateRefs[code].on('value', (x) => { states[code] = x.val(); renderList(); });
+      }
+      renderList();
+      if (sel && !index[sel]) X.go('leagues', '');
+    });
+
+    $('oNewBtn').onclick = () => X.go('leagues', 'new');
+    $('oCreateCancel').onclick = () => X.go('leagues', '');
+
+    // ----- 리그 만들기 -----
+    $('oCreateForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const btn = document.querySelector('button[form="oCreateForm"]');
+      btn.disabled = true;
+      const r = await run('omokCreate', {
+        name: $('oName').value.trim(),
+        moveTime: Number($('oMoveTime').value),
+        win: Number($('oWin').value), draw: Number($('oDraw').value), loss: Number($('oLoss').value)
+      });
+      btn.disabled = false;
+      if (r.ok) { $('oName').value = ''; X.go('leagues', r.code); }
+    });
+
+    bindButtons();
+    // 진행 중 표시 갱신 (카운트다운 → 진행 중)
+    setInterval(() => { if (L && L.state && L.state.phase === 'round' && L.meta) renderPhase(); }, 1000);
+    addEventListener('langchange', () => { renderList(); render(); });
+  }
+
   function renderList() {
-    const tb = $('oListBody');
-    tb.innerHTML = '';
     const list = Object.entries(index).sort((a, b) => (b[1].createdAt || 0) - (a[1].createdAt || 0));
     $('oNoLeagues').classList.toggle('hidden', list.length > 0);
-    for (const [code, v] of list) {
-      const tr = document.createElement('tr');
-      if (code === sel) tr.className = 'sel';
-      [code, v.name || '', new Date(v.createdAt || 0).toLocaleString()].forEach((c) => {
-        const td = document.createElement('td'); td.textContent = c; tr.appendChild(td);
-      });
-      const td = document.createElement('td');
-      td.style.whiteSpace = 'nowrap';
-      td.appendChild(button(t('open'), 'small go', () => select(code)));
-      const del = button(t('delete'), 'small stop', async () => {
-        if (!confirm(t('confirmDelete', { code }))) return;
-        const r = await run('omokDelete', { code });
-        if (r.ok && sel === code) select(null);
-      });
-      del.style.marginLeft = '6px';
-      td.appendChild(del);
-      tr.appendChild(td);
-      tb.appendChild(tr);
-    }
+    X.cards($('oCards'), list.map(([code, v]) => ({
+      id: code, title: v.name || '', sub: X.date(v.createdAt),
+      badge: states[code] !== undefined ? phaseBadge(states[code]) : null
+    })), mode === 'detail' ? sel : null, (code) => X.go('leagues', code));
   }
 
   function button(text, cls, onclick) {
@@ -55,14 +68,26 @@ addEventListener('adminstart', (ev) => {
     return b;
   }
 
+  // 화면: empty(안내) | create(만들기) | detail(리그)
+  function show(m, code) {
+    mode = m;
+    $('oEmpty').classList.toggle('hidden', m !== 'empty');
+    $('oCreate').classList.toggle('hidden', m !== 'create');
+    $('oDetail').classList.toggle('hidden', m !== 'detail');
+    if (m === 'create') $('oName').focus();
+    select(m === 'detail' ? code : null);
+    // 좁은 화면에선 목록 아래에 상세가 있으므로 그쪽으로 이동
+    if (m !== 'empty' && innerWidth <= 1200) $('oDetail').parentElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    renderList();
+  }
+
   // ----- 선택한 리그 -----
   function select(code) {
+    if (code === sel) return;
     refs.forEach((r) => r.off());
     refs = [];
-    sel = code; viewMid = null; viewRound = 0;
+    sel = code; viewMid = null; viewRound = 0; lastPhase = null;
     L = { meta: null, state: null, members: {}, games: {}, byes: {} };
-    renderList();
-    $('oDetail').classList.toggle('hidden', !code);
     $('oViewer').classList.add('hidden');
     if (!code) return;
     const ref = (p) => { const x = db.ref(`omok/${code}/${p}`); refs.push(x); return x; };
@@ -71,32 +96,35 @@ addEventListener('adminstart', (ev) => {
       const prev = L.state && L.state.round;
       L.state = s.val();
       // 새 라운드가 시작되면 그 라운드 대국을 보여 줌
-      if (L.state && L.state.round !== prev) viewRound = L.state.round || 1;
+      if (L.state && L.state.round !== prev) { viewRound = L.state.round || 1; viewMid = null; }
       render();
     });
     ref('members').on('value', (s) => { L.members = C.obj(s.val()); render(); });
     ref('games').on('value', (s) => { L.games = s.val() || {}; render(); });
     ref('byes').on('value', (s) => { L.byes = s.val() || {}; render(); });
-    $('oDetail').scrollIntoView({ behavior: 'smooth', block: 'start' });
   }
 
   const nameOf = (sid) => (L.members[sid] && L.members[sid].name) || sid;
-  const studentUrl = () => new URL('omok?code=' + sel, location.href).href;
+  const joinUrl = () => new URL('omok?code=' + sel, location.href).href;
   const unfinished = (r) => Object.values(L.games['r' + r] || {}).filter((g) => g && !g.res).length;
 
   function render() {
     if (!sel || !L || !L.meta || !L.state) return;
     const meta = L.meta, st = L.state, n = meta.rounds || 0, m = Object.keys(L.members).length;
+    const expect = n || (m % 2 ? m : Math.max(m - 1, 0)); // 대진 전엔 지금 인원 기준 예상 라운드 수
     $('oCode').textContent = sel;
-    $('oDName').textContent = `${meta.name || ''} · ⏱ ${meta.moveTime}s · ${meta.win}/${meta.draw}/${meta.loss}`;
-    $('oLink').textContent = t('oStudentLink', { url: studentUrl() });
+    $('oDName').textContent = meta.name || '';
+    X.badge($('oBadge'), phaseBadge(st));
+    $('oInfo').textContent = t('oInfoLine', { s: meta.moveTime, w: meta.win, d: meta.draw, l: meta.loss, m, n: expect });
+    const at = { register: 0, ready: 1, round: 2, results: 2, finished: 4 }[st.phase] || 0;
+    X.steps($('oSteps'), [t('oStep1'), t('oStep2'), t('oStep3', { n: expect }), t('oStep4')], at);
 
     renderPhase();
 
-    // 버튼
+    // 버튼: 지금 단계에서 할 수 있는 것만
     const sb = $('oScheduleBtn');
-    sb.classList.toggle('hidden', st.phase !== 'register' && st.phase !== 'ready');
-    sb.textContent = t(st.phase === 'ready' ? 'oReshuffleBtn' : 'oScheduleBtn');
+    sb.classList.toggle('hidden', st.phase !== 'register');
+    sb.textContent = t('oScheduleBtn');
     sb.disabled = m < 2;
     $('oReopenBtn').classList.toggle('hidden', st.phase !== 'ready');
     const canStart = (st.phase === 'ready' || st.phase === 'results') && (st.round || 0) < n;
@@ -104,6 +132,14 @@ addEventListener('adminstart', (ev) => {
     $('oStartBtn').textContent = t('oStartBtn', { r: (st.round || 0) + 1 });
     $('oEndBtn').classList.toggle('hidden', st.phase !== 'round');
     $('oEndBtn').textContent = t('oEndBtn', { r: st.round });
+    $('oReshuffleBtn').classList.toggle('hidden', st.phase !== 'ready');
+
+    // 등록 기간엔 명단을 펼치고, 대진이 나오면 대국/순위를 위로
+    $('oPlay').classList.toggle('hidden', st.phase === 'register');
+    if (st.phase !== lastPhase) {
+      $('oMembersBox').open = st.phase === 'register';
+      lastPhase = st.phase;
+    }
 
     renderGames();
     renderStandings();
@@ -111,16 +147,16 @@ addEventListener('adminstart', (ev) => {
   }
 
   function renderPhase() {
-    const st = L.state, n = L.meta.rounds || 0, m = Object.keys(L.members).length;
+    const st = L.state, n = L.meta.rounds || 0, m = Object.keys(L.members).length, r = st.round;
     let ph;
-    if (st.phase === 'register') ph = t('oPhRegister', { m });
-    else if (st.phase === 'ready') ph = t('oPhReady', { m, n });
+    if (st.phase === 'register') ph = t('oNextRegister', { m, n: m % 2 ? m : Math.max(m - 1, 0) });
+    else if (st.phase === 'ready') ph = t('oNextReady', { m, n });
     else if (st.phase === 'round') {
-      const total = Object.keys(L.games['r' + st.round] || {}).length;
-      ph = now() < st.startAt ? t('oPhCountdown', { r: st.round, n })
-        : t('oPhRound', { r: st.round, n, done: total - unfinished(st.round), total });
-    } else if (st.phase === 'results') ph = t('oPhResults', { r: st.round, n });
-    else ph = t('oPhFinished', { n });
+      const total = Object.keys(L.games['r' + r] || {}).length;
+      ph = now() < st.startAt ? t('oPhCountdown', { r, n })
+        : t('oNextRound', { r, n, done: total - unfinished(r), total });
+    } else if (st.phase === 'results') ph = t('oNextResults', { r, n, next: r + 1 });
+    else ph = t('oNextFinished', { n });
     $('oPhase').textContent = ph;
   }
 
@@ -146,7 +182,6 @@ addEventListener('adminstart', (ev) => {
     if (!viewRound || viewRound > n) viewRound = Math.max(1, L.state.round || 1);
     rs.value = viewRound;
     rs.classList.toggle('hidden', !n);
-    $('oNoSchedule').classList.toggle('hidden', n > 0);
     const rk = 'r' + viewRound;
     $('oByeText').textContent = L.byes[rk] ? t('oByeInfo', { name: nameOf(L.byes[rk]) }) : '';
 
@@ -199,7 +234,6 @@ addEventListener('adminstart', (ev) => {
     tr.appendChild(td);
     return tr;
   }
-  $('oRoundSel').onchange = () => { viewRound = Number($('oRoundSel').value); viewMid = null; render(); };
 
   // ----- 순위 -----
   const table = () => C.standings(L.meta, L.members, L.games);
@@ -238,45 +272,70 @@ addEventListener('adminstart', (ev) => {
   }
 
   // ----- 진행 버튼 -----
-  $('oScheduleBtn').onclick = async () => {
-    const m = Object.keys(L.members).length;
-    const n = m % 2 ? m : m - 1;
-    if (!confirm(t('oConfirmSchedule', { m, n }))) return;
-    $('oScheduleBtn').disabled = true;
-    await run('omokSchedule', { code: sel });
-    render();
-  };
-  $('oReopenBtn').onclick = () => { if (confirm(t('oConfirmReopen'))) run('omokReopen', { code: sel }); };
-  $('oStartBtn').onclick = async () => {
-    $('oStartBtn').disabled = true;
-    await run('omokStartRound', { code: sel });
-    $('oStartBtn').disabled = false;
-  };
-  $('oEndBtn').onclick = async () => {
-    const r = L.state.round;
-    if (!confirm(t('oConfirmEnd', { r, k: unfinished(r) }))) return;
-    $('oEndBtn').disabled = true;
-    await run('omokEndRound', { code: sel });
-    $('oEndBtn').disabled = false;
-  };
+  function bindButtons() {
+    $('oScheduleBtn').onclick = async () => {
+      const m = Object.keys(L.members).length;
+      const n = m % 2 ? m : m - 1;
+      if (!confirm(t('oConfirmSchedule', { m, n }))) return;
+      $('oScheduleBtn').disabled = true;
+      await run('omokSchedule', { code: sel });
+      render();
+    };
+    $('oReopenBtn').onclick = () => { if (confirm(t('oConfirmReopen'))) run('omokReopen', { code: sel }); };
+    $('oStartBtn').onclick = async () => {
+      $('oStartBtn').disabled = true;
+      await run('omokStartRound', { code: sel });
+      $('oStartBtn').disabled = false;
+    };
+    $('oEndBtn').onclick = async () => {
+      const r = L.state.round;
+      if (!confirm(t('oConfirmEnd', { r, k: unfinished(r) }))) return;
+      $('oEndBtn').disabled = true;
+      await run('omokEndRound', { code: sel });
+      $('oEndBtn').disabled = false;
+    };
 
-  // CSV: 순위 + 라운드별 상대/결과
-  $('oCsvBtn').onclick = () => {
-    const n = L.meta.rounds || 0;
-    const head = [t('colRank'), t('colSid'), t('colName'), t('oColP'), t('oColW'), t('oColD'), t('oColL'), t('oColPts')]
-      .concat(Array.from({ length: n }, (_, k) => 'R' + (k + 1)));
-    const rows = table().map((r) => [r.rank, r.sid, r.name, r.p, r.w, r.d, r.l, r.pts].concat(Array.from({ length: n }, (_, k) => {
-      const rk = 'r' + (k + 1);
-      const g = Object.values(L.games[rk] || {}).find((x) => x && (x.b === r.sid || x.w === r.sid));
-      if (!g) return L.byes[rk] === r.sid ? t('oBye') : '';
-      const o = C.outcome(g, r.sid);
-      const opp = g.b === r.sid ? g.w : g.b;
-      return `${o ? t(o === 'w' ? 'oColW' : o === 'l' ? 'oColL' : 'oColD') : '-'} vs ${nameOf(opp)} (${t(g.b === r.sid ? 'oBlack' : 'oWhite')})`;
-    })));
-    downloadCsv([head].concat(rows), `omok_${sel}_${L.meta.name || ''}`);
-  };
+    // CSV: 순위 + 라운드별 상대/결과
+    $('oCsvBtn').onclick = () => {
+      const n = L.meta.rounds || 0;
+      const head = [t('colRank'), t('colSid'), t('colName'), t('oColP'), t('oColW'), t('oColD'), t('oColL'), t('oColPts')]
+        .concat(Array.from({ length: n }, (_, k) => 'R' + (k + 1)));
+      const rows = table().map((r) => [r.rank, r.sid, r.name, r.p, r.w, r.d, r.l, r.pts].concat(Array.from({ length: n }, (_, k) => {
+        const rk = 'r' + (k + 1);
+        const g = Object.values(L.games[rk] || {}).find((x) => x && (x.b === r.sid || x.w === r.sid));
+        if (!g) return L.byes[rk] === r.sid ? t('oBye') : '';
+        const o = C.outcome(g, r.sid);
+        const opp = g.b === r.sid ? g.w : g.b;
+        return `${o ? t(o === 'w' ? 'oColW' : o === 'l' ? 'oColL' : 'oColD') : '-'} vs ${nameOf(opp)} (${t(g.b === r.sid ? 'oBlack' : 'oWhite')})`;
+      })));
+      downloadCsv([head].concat(rows), `omok_${sel}_${L.meta.name || ''}`);
+    };
 
-  // 진행 중 표시 갱신 (카운트다운 → 진행 중)
-  setInterval(() => { if (L && L.state && L.state.phase === 'round' && L.meta) renderPhase(); }, 1000);
-  addEventListener('langchange', () => { renderList(); render(); });
-});
+    $('oRoundSel').onchange = () => { viewRound = Number($('oRoundSel').value); viewMid = null; render(); };
+    $('oReshuffleBtn').onclick = async () => {
+      if (!confirm(t('oConfirmReshuffle'))) return;
+      await run('omokSchedule', { code: sel });
+    };
+    $('oLinkBtn').onclick = () => X.copyText(joinUrl(), $('oLinkBtn'));
+    $('oDeleteBtn').onclick = async () => {
+      if (!confirm(t('confirmDelete', { code: sel }))) return;
+      const r = await run('omokDelete', { code: sel });
+      if (r.ok) X.go('leagues', '');
+    };
+  }
+
+  return {
+    id: 'omok', icon: '⚫', name: 'gOmok', path: 'omok',
+    views: [{ id: 'leagues', label: 'vLeagues' }],
+    start(ctx) {
+      X = ctx;
+      ({ $, t, db, now, run, fill, downloadCsv } = ctx);
+      startLeagues();
+    },
+    route(view, arg) {
+      if (arg === 'new') show('create');
+      else if (arg) show('detail', arg);
+      else show('empty');
+    }
+  };
+})());

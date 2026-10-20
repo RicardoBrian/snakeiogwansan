@@ -3,7 +3,7 @@
 // 실제 쓰기는 Firebase 비밀키(FIREBASE_DB_SECRET)로 수행합니다.
 // 보안 규칙상 settings, 게임방 설정/진행 상태/순위, 오목 리그, 전체 삭제는 비밀키로만 가능합니다.
 
-import { ApiError, envReady, fb, int, json, roomCode } from '../../server/firebase.js';
+import { ApiError, cleanEnv, envReady, fb, int, json, roomCode } from '../../server/firebase.js';
 import { isAdminEmail, verifyIdToken } from '../../server/auth.js';
 import { OMOK_ADMIN } from '../../server/omok.js';
 
@@ -146,7 +146,8 @@ const ACTIONS = {
   ...OMOK_ADMIN
 };
 
-export async function onRequestPost({ request, env }) {
+export async function onRequestPost({ request, env: rawEnv }) {
+  const env = cleanEnv(rawEnv);
   if (!env.ADMIN_EMAILS || !env.FIREBASE_PROJECT_ID || !envReady(env)) {
     return json({ ok: false, code: 'env_missing' }, 500);
   }

@@ -8,6 +8,13 @@ export class ApiError extends Error {
   constructor(code, status = 400, detail) { super(code); this.code = code; this.status = status; this.detail = detail; }
 }
 
+// 환경변수를 붙여넣을 때 함께 들어간 앞뒤 공백/줄바꿈 제거
+export function cleanEnv(env) {
+  const out = {};
+  for (const [k, v] of Object.entries(env || {})) out[k] = typeof v === 'string' ? v.trim() : v;
+  return out;
+}
+
 export function envReady(env) {
   return !!(env.FIREBASE_DB_SECRET && env.FIREBASE_DATABASE_URL);
 }

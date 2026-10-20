@@ -1,11 +1,12 @@
 // POST /api/admin — 관리자 작업 (오류는 code 로 돌려주고, 화면 문구는 브라우저에서 언어별로 표시)
 // 관리자는 구글 계정으로 로그인하고, 서버가 구글 ID 토큰과 허용 이메일(ADMIN_EMAILS)을 확인합니다.
 // 실제 쓰기는 Firebase 비밀키(FIREBASE_DB_SECRET)로 수행합니다.
-// 보안 규칙상 settings, 게임방 설정/진행 상태/순위, 오목 리그, 전체 삭제는 비밀키로만 가능합니다.
+// 보안 규칙상 settings, 게임방 설정/진행 상태/순위, 오목 리그, 테트리스 방, 전체 삭제는 비밀키로만 가능합니다.
 
 import { ApiError, cleanEnv, envReady, fb, int, json, roomCode } from '../../server/firebase.js';
 import { isAdminEmail, verifyIdToken } from '../../server/auth.js';
 import { OMOK_ADMIN } from '../../server/omok.js';
+import { TETRIS_ADMIN } from '../../server/tetris.js';
 
 const COUNTDOWN_MS = 4000;      // 라운드 시작 전 카운트다운
 const FINISH_GRACE_MS = 2000;   // 라운드 종료 후 마지막 점수가 도착할 때까지 기다리는 시간
@@ -143,7 +144,10 @@ const ACTIONS = {
   },
 
   // ----- 오목 리그 -----
-  ...OMOK_ADMIN
+  ...OMOK_ADMIN,
+
+  // ----- 테트리스 대전 -----
+  ...TETRIS_ADMIN
 };
 
 export async function onRequestPost({ request, env: rawEnv }) {

@@ -1,0 +1,100 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>TETRIS</title>
+<link rel="icon" href="data:,">
+<link rel="stylesheet" href="fonts/fonts.css?v=20261020d">
+<link rel="stylesheet" href="common.css?v=20261020d">
+<link rel="stylesheet" href="tetris.css?v=20261020d">
+</head>
+<body>
+
+<div id="login" class="overlay">
+  <div class="card">
+    <h1 data-i18n="tTitle"></h1>
+    <p class="sub" data-i18n="tSubtitle"></p>
+    <form id="loginForm" autocomplete="off">
+      <input id="sidInput" data-i18n-ph="sidPh" maxlength="12" inputmode="numeric" required>
+      <input id="nameInput" data-i18n-ph="namePh" maxlength="10" required>
+      <h3 class="pick" data-i18n="tPickRoom"></h3>
+      <div id="roomList"></div>
+      <button id="joinBtn" type="submit" data-i18n="join"></button>
+    </form>
+    <p id="loginError" class="error"></p>
+    <p id="connText" class="muted"></p>
+  </div>
+</div>
+
+<div id="room" class="hidden">
+  <header id="bar">
+    <b id="roomName"></b>
+    <span id="meName" class="muted"></span>
+    <span id="statusText"></span>
+    <span class="grow"></span>
+    <button id="setBtn" type="button" data-i18n="tSettings"></button>
+    <button id="leaveBtn" type="button" class="ghost" data-i18n="tLeave"></button>
+  </header>
+  <main id="layout">
+    <section id="playArea">
+      <div id="fieldWrap">
+        <canvas id="play"></canvas>
+        <div id="fieldMsg" class="hidden"><b id="msgBig"></b><span id="msgSmall"></span></div>
+      </div>
+      <div id="stats">
+        <div><b id="stLevel">1</b><span data-i18n="tLevelLabel"></span></div>
+        <div><b id="stTime">0:00</b><span data-i18n="tTime"></span></div>
+        <div><b id="stSent">0</b><span data-i18n="tSent"></span></div>
+        <div><b id="stLines">0</b><span data-i18n="tLines"></span></div>
+        <div><b id="stPps">0.00</b><span>PPS</span></div>
+      </div>
+      <div id="touchPad">
+        <button type="button" data-act="ccw">⟲</button>
+        <button type="button" data-act="cw">⟳</button>
+        <button type="button" data-act="r180">180</button>
+        <button type="button" data-act="hold">HOLD</button>
+        <button type="button" data-act="left">◀</button>
+        <button type="button" data-act="soft">▼</button>
+        <button type="button" data-act="right">▶</button>
+        <button type="button" data-act="hard">⤓</button>
+      </div>
+      <p id="help" class="muted"></p>
+    </section>
+    <section id="side">
+      <div id="thumbs"></div>
+      <div id="standPanel">
+        <h3 data-i18n="tStandings"></h3>
+        <table><thead><tr><th>#</th><th data-i18n="colName"></th><th class="num" data-i18n="tColPts"></th><th class="num" data-i18n="tColWins"></th><th class="num" data-i18n="colGames"></th></tr></thead><tbody id="standBody"></tbody></table>
+        <p class="muted" data-i18n="tPointsShort"></p>
+      </div>
+    </section>
+  </main>
+</div>
+
+<div id="settings" class="overlay hidden">
+  <div class="card wide">
+    <h1 data-i18n="tSetTitle"></h1>
+    <label class="field"><span data-i18n="tDas"></span><input id="cfgDas" type="number" min="0" max="500" step="1"></label>
+    <label class="field"><span data-i18n="tArr"></span><input id="cfgArr" type="number" min="0" max="200" step="1"></label>
+    <label class="field"><span data-i18n="tSdf"></span><input id="cfgSdf" type="number" min="0" max="500" step="1"></label>
+    <h3 class="pick" data-i18n="tKeys"></h3>
+    <div id="keyList"></div>
+    <button id="cfgClose" type="button" data-i18n="tClose"></button>
+    <button id="cfgReset" type="button" class="ghost" data-i18n="tDefaults"></button>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script src="i18n.js?v=20261020d"></script>
+<script src="tetris-i18n.js?v=20261020d"></script>
+<script src="lib/firebase-app-compat.js?v=20261020d"></script>
+<script src="lib/firebase-database-compat.js?v=20261020d"></script>
+<script src="api/config"></script>
+<script src="tetris-common.js?v=20261020d"></script>
+<script src="tetris.js?v=20261020d"></script>
+</body>
+</html>

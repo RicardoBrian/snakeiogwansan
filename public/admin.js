@@ -117,9 +117,9 @@ window.Admin = (() => {
     const same = cur.game === r.game && cur.view === r.view && cur.arg === r.arg;
     cur = r;
     try { localStorage.setItem('admin_game', r.game.id); } catch (e) { /* 무시 */ }
-    document.querySelectorAll('section.game').forEach((s) => s.classList.toggle('hidden', s.dataset.game !== r.game.id));
+    document.querySelectorAll('section.game').forEach((s) => s.classList.toggle('on', s.dataset.game === r.game.id));
     const sec = document.querySelector(`section.game[data-game="${r.game.id}"]`);
-    sec.querySelectorAll('[data-view]').forEach((v) => v.classList.toggle('hidden', v.dataset.view !== r.view));
+    sec.querySelectorAll('[data-view]').forEach((v) => v.classList.toggle('on', v.dataset.view === r.view));
     renderChrome();
     if (!same && r.game.route) r.game.route(r.view, r.arg);
   }
@@ -165,14 +165,28 @@ window.Admin = (() => {
     db = firebase.database();
     if (emu) db.useEmulator('127.0.0.1', 9000);
     db.ref('.info/serverTimeOffset').on('value', (s) => { serverOffset = s.val() || 0; });
-    for (const g of games) {
-      g.start(Object.assign({}, ctx, {
-        // 이 게임 안에서 화면/코드를 바꿀 때 (주소도 같이 바뀜)
-        go: (view, arg) => setRoute(g.id, view, arg),
-        current: () => (cur.game === g ? { view: cur.view, arg: cur.arg } : null)
-      }));
+    // 한 게임 화면에 문제가 생겨도 나머지 게임은 쓸 수 있게
+    for (const g of games.slice()) {
+      try {
+        g.start(Object.assign({}, ctx, {
+          // 이 게임 안에서 화면/코드를 바꿀 때 (주소도 같이 바뀜)
+          go: (view, arg) => setRoute(g.id, view, arg),
+          current: () => (cur.game === g ? { view: cur.view, arg: cur.arg } : null)
+        }));
+      } catch (e) {
+        console.error('game start failed', g.id, e);
+        games.splice(games.indexOf(g), 1);
+      }
     }
+    if (!games.length) { showBroken(); return; }
     applyRoute();
+  }
+
+  // 게임 화면 파일을 못 불러온 경우 (예전 파일이 브라우저에 남아 있을 때 등)
+  function showBroken() {
+    $('main').classList.add('hidden');
+    $('gate').classList.remove('hidden');
+    setGate('loadErr');
   }
 
   // ================= 게임들이 같이 쓰는 도우미 =================

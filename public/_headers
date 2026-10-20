@@ -1,0 +1,5 @@
+# 새로 배포하면 브라우저가 예전 파일을 쓰지 않도록 항상 서버에 확인
+/*
+  Cache-Control: no-cache
+/fonts/*
+  Cache-Control: public, max-age=604800

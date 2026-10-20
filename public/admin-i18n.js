@@ -1,6 +1,7 @@
 // 관리자 화면 틀(게임 메뉴, 목록, 단계 안내) 문구 — i18n.js 다음에 불러옵니다
 I18N.extend({
   ko: {
+    loadErr: '화면 파일을 불러오지 못했습니다. Ctrl + Shift + R (맥: Cmd + Shift + R) 로 새로고침하세요.',
     navGames: '게임',
     gSnake: '뱀 게임',
     gOmok: '오목',
@@ -46,6 +47,7 @@ I18N.extend({
     oConfirmReshuffle: '대진을 무작위로 다시 섞을까요?'
   },
   en: {
+    loadErr: 'Could not load the page files. Reload with Ctrl + Shift + R (Mac: Cmd + Shift + R).',
     navGames: 'Games',
     gSnake: 'Snake',
     gOmok: 'Gomoku',
@@ -91,6 +93,7 @@ I18N.extend({
     oConfirmReshuffle: 'Reshuffle the schedule randomly?'
   },
   zh: {
+    loadErr: '无法加载页面文件。请按 Ctrl + Shift + R（Mac：Cmd + Shift + R）刷新。',
     navGames: '游戏',
     gSnake: '贪吃蛇',
     gOmok: '五子棋',
@@ -136,6 +139,7 @@ I18N.extend({
     oConfirmReshuffle: '重新随机抽签吗？'
   },
   ru: {
+    loadErr: 'Не удалось загрузить файлы страницы. Обновите: Ctrl + Shift + R (Mac: Cmd + Shift + R).',
     navGames: 'Игры',
     gSnake: 'Змейка',
     gOmok: 'Гомоку',

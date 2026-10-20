@@ -143,7 +143,8 @@ database.rules.json     Firebase 보안 규칙 (콘솔에 붙여넣기)
 3. `public/새게임-admin.js`에서 `Admin.register({ id, icon, name, path, views, start(ctx), route(view, arg) })`
    (`snake-admin.js`, `omok-admin.js`가 예시) → `index.html` 아래쪽 `<script>`에 추가
 4. 서버 작업이 필요하면 `server/새게임.js`에 관리자 작업을 만들고 `functions/api/admin.js`의 `ACTIONS`에 합치기
-5. 문구는 `admin-i18n.js` 같은 파일에 `I18N.extend({ ko: {...}, en: {...}, zh: {...}, ru: {...} })`
+5. HTML에서 불러오는 js/css 주소 끝의 `?v=…` 값을 새 값으로 바꾸기 (브라우저에 남은 예전 파일과 섞이지 않게)
+6. 문구는 `admin-i18n.js` 같은 파일에 `I18N.extend({ ko: {...}, en: {...}, zh: {...}, ru: {...} })`
 
 ## 연습 모드
 - 로그인 화면의 **연습 모드로 하기** → 코드 없이 자유롭게 플레이 (기존 방식, 연습 최고 기록 TOP 10)

@@ -7,6 +7,8 @@ a { color: var(--yellow); }
 h1, h2, h3 { margin: 0; }
 h2 { font-size: 17px; margin-bottom: 10px; }
 .hidden { display: none !important; }
+/* 게임 화면은 admin.js 가 고른 것만 보임 (스크립트가 실패해도 다 쏟아져 나오지 않게) */
+section.game:not(.on), section.game [data-view]:not(.on) { display: none; }
 .muted { color: var(--muted); font-size: 13px; }
 .error { color: #ff7676; }
 .row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }

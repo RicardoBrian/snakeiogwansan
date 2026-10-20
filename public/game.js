@@ -6,7 +6,9 @@
   const FOOD_TARGET = 700;       // 맵에 유지할 먹이 개수
   const SEND_INTERVAL = 100;     // 내 위치 전송 주기(ms) = 초당 10회
   const STALE_MS = 4000;         // 이 시간 동안 소식 없는 플레이어는 숨김
-  const INTERP_DELAY = 150;      // 다른 플레이어를 이만큼 과거 시점으로 보간해서 그림
+  const INTERP_DELAY = 100;      // 다른 플레이어 몸통은 이만큼 과거 시점으로 보간해서 그림 (머리는 현재 시각으로 예측)
+  const PREDICT_MAX = 400;       // 머리 예측 최대 시간(ms)
+  const HIT_RATIO = 0.9;         // 머리와 몸통이 (반지름 합 × 이 값)보다 가까우면 충돌
   const SPEED = 170, BOOST_SPEED = 340;
   const START_MASS = 20, BOOST_FLOOR = 10, BOOST_RESUME = 13, BOOST_COST = 2;
   const SAVE_INTERVAL = 5000;     // 게임 중 최고 점수 저장 주기(ms)
@@ -237,7 +239,7 @@
     const last = r.snaps[r.snaps.length - 1];
     if (snap.t <= last.t) return;
     if (Math.hypot(snap.x - last.x, snap.y - last.y) > 600) { // 순간이동(재시작) 처리
-      r.snaps = [snap]; r.x = snap.x; r.y = snap.y; r.a = snap.a; prefill(r);
+      r.snaps = [snap]; r.x = snap.x; r.y = snap.y; r.a = snap.a; r.hx = null; prefill(r);
       return;
     }
     r.snaps.push(snap);
@@ -265,17 +267,38 @@
     r.x += (x - r.x) * k; r.y += (y - r.y) * k;
     r.a += angDiff(a, r.a) * k; r.b = b;
     trailAdvance(r, r.x, r.y, lengthOf(r.mass));
+    predictHead(r, k);
+  }
+
+  // 받은 위치는 (전송 주기 + 네트워크 지연 + 보간 지연)만큼 과거라서, 그대로 쓰면 상대 머리가 실제보다
+  // 뒤에 있는 것처럼 보이고 판정됨 → 머리 앞을 지나가도 안 부딪힘. 마지막 위치에서 방향·속도·회전 속도로
+  // 현재 시각의 머리를 예측해, 보간된 위치에서 예측 머리까지를 '목'으로 이어서 그리기/충돌에 함께 사용
+  function predictHead(r, k) {
+    const S = r.snaps, last = S[S.length - 1];
+    const e = clamp(now() - last.t, 0, PREDICT_MAX) / 1000;
+    let w = 0;
+    if (S.length >= 2) {
+      const P = S[S.length - 2], ds = (last.t - P.t) / 1000;
+      if (ds > 0.02) w = clamp(angDiff(last.a, P.a) / ds, -5, 5);
+    }
+    const spd = last.b ? BOOST_SPEED : SPEED, steps = 4, h = e / steps;
+    let px = last.x, py = last.y, pa = last.a;
+    for (let i = 0; i < steps; i++) { pa += w * h; px += Math.cos(pa) * spd * h; py += Math.sin(pa) * spd * h; }
+    if (r.hx == null) { r.hx = px; r.hy = py; r.ha = pa; }
+    r.hx += (px - r.hx) * k; r.hy += (py - r.hy) * k; r.ha += angDiff(pa, r.ha) * k;
+    const neck = [];
+    const dx = r.hx - r.x, dy = r.hy - r.y, d = Math.hypot(dx, dy), n = Math.floor(d / SP);
+    for (let i = 1; i <= n; i++) neck.push({ x: r.x + (dx * i * SP) / d, y: r.y + (dy * i * SP) / d });
+    neck.push({ x: r.hx, y: r.hy });
+    r.neck = neck;
   }
 
   function hitsSnake(x, y, rad, s) {
-    const rr = radiusOf(s.mass), lim = (rad + rr) * 0.75, lim2 = lim * lim;
+    const rr = radiusOf(s.mass), lim = (rad + rr) * HIT_RATIO, lim2 = lim * lim;
+    const near = (p) => { const dx = p.x - x, dy = p.y - y; return dx * dx + dy * dy < lim2; };
+    if (s.neck && s.neck.some(near)) return true;
     if (x < s.minX - lim || x > s.maxX + lim || y < s.minY - lim || y > s.maxY + lim) return false;
-    const p = s.pts;
-    for (let i = p.length - 1; i >= 0; i--) {
-      const dx = p[i].x - x, dy = p[i].y - y;
-      if (dx * dx + dy * dy < lim2) return true;
-    }
-    return false;
+    return s.pts.some(near);
   }
 
   // ---------- 내 뱀 ----------
@@ -809,9 +832,10 @@
   resize();
 
   function drawSnake(s, isMe, vx0, vy0, vx1, vy1) {
-    const r = radiusOf(s.mass);
-    if (s.maxX + r < vx0 || s.minX - r > vx1 || s.maxY + r < vy0 || s.minY - r > vy1) return;
-    const pts = sampleTrail(s.pts, Math.max(4, r * 0.7));
+    const r = radiusOf(s.mass), m = r + 150; // 150: 예측된 목 길이 여유
+    if (s.maxX + m < vx0 || s.minX - m > vx1 || s.maxY + m < vy0 || s.minY - m > vy1) return;
+    // 다른 플레이어는 충돌 판정과 똑같이 '몸통 + 예측된 목/머리'로 그림
+    const pts = sampleTrail(s.neck ? s.pts.concat(s.neck) : s.pts, Math.max(4, r * 0.7));
     const n = pts.length, h = s.hue;
     if (s.b) {
       ctx.fillStyle = `hsla(${h},100%,65%,0.18)`;
@@ -827,7 +851,7 @@
       ctx.beginPath(); ctx.arc(pts[i].x, pts[i].y, rr, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
     }
     // 눈
-    const hx = s.x, hy = s.y, a = s.a, ca = Math.cos(a), sa = Math.sin(a);
+    const hx = s.neck ? s.hx : s.x, hy = s.neck ? s.hy : s.y, a = s.neck ? s.ha : s.a, ca = Math.cos(a), sa = Math.sin(a);
     for (const side of [-1, 1]) {
       const ex = hx + ca * r * 0.35 - sa * r * 0.45 * side, ey = hy + sa * r * 0.35 + ca * r * 0.45 * side;
       ctx.fillStyle = '#fff';

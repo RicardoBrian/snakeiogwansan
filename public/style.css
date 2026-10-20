@@ -22,6 +22,8 @@ button:hover { background: #4ade80; }
 button:disabled { background: #3b4660; color: #8b95ad; cursor: default; }
 button.ghost { background: transparent; color: #9aa7c2; border: 1px solid #33405e; margin-top: 8px; }
 button.ghost:hover { background: #1f2840; }
+.omok-link { display: block; margin-top: 12px; color: #fbbf24; font-weight: 700; text-decoration: none; }
+.omok-link:hover { text-decoration: underline; }
 
 .fame { margin-top: 18px; text-align: left; border-top: 1px solid #2a3550; padding-top: 12px; }
 .fame h3 { margin: 0 0 8px; font-size: 15px; text-align: center; }

@@ -154,7 +154,14 @@
       err_round_not_over: '라운드가 아직 끝나지 않았습니다.',
       boardOpen: '열기',
       boardSub: '참가자 {m}명 · 총 {n}라운드 · 라운드당 {dur}',
-      boardLobby: '접속해서 코드를 입력하세요! 현재 {m}명 참가'
+      boardLobby: '접속해서 코드를 입력하세요! 현재 {m}명 참가',
+      readyBtn: '✅ 다음 라운드 준비 완료',
+      readyCancel: '준비 취소',
+      readyCount: '준비 {n}/{m}명 · 접속한 사람이 모두 준비하면 자동으로 시작해요',
+      readyWaiting: '아직 준비 안 함: {names}',
+      adminReady: ' · 다음 라운드 준비 {n}/{m}',
+      boardReady: '다음 라운드 준비 {n}/{m}명 — 모두 준비하면 자동 시작',
+      err_not_ready: '아직 모두 준비되지 않았습니다.'
     },
 
     en: {
@@ -304,7 +311,14 @@
       err_round_not_over: 'The round isn\'t over yet.',
       boardOpen: 'Open',
       boardSub: '{m} players · {n} rounds · {dur} per round',
-      boardLobby: 'Join and enter the code! {m} players so far'
+      boardLobby: 'Join and enter the code! {m} players so far',
+      readyBtn: '✅ Ready for next round',
+      readyCancel: 'Cancel ready',
+      readyCount: 'Ready {n}/{m} · Starts automatically when everyone online is ready',
+      readyWaiting: 'Not ready yet: {names}',
+      adminReady: ' · ready for next round {n}/{m}',
+      boardReady: 'Ready for next round {n}/{m} — starts when everyone is ready',
+      err_not_ready: 'Not everyone is ready yet.'
     },
 
     zh: {
@@ -454,7 +468,14 @@
       err_round_not_over: '本轮尚未结束。',
       boardOpen: '打开',
       boardSub: '参赛 {m} 人 · 共 {n} 轮 · 每轮 {dur}',
-      boardLobby: '请进入网站并输入代码！当前 {m} 人'
+      boardLobby: '请进入网站并输入代码！当前 {m} 人',
+      readyBtn: '✅ 准备好下一轮',
+      readyCancel: '取消准备',
+      readyCount: '已准备 {n}/{m} 人 · 在线的人全部准备后自动开始',
+      readyWaiting: '尚未准备：{names}',
+      adminReady: ' · 下一轮准备 {n}/{m}',
+      boardReady: '下一轮准备 {n}/{m} 人 — 全部准备后自动开始',
+      err_not_ready: '还有人没有准备好。'
     },
 
     ru: {
@@ -604,7 +625,14 @@
       err_round_not_over: 'Раунд ещё не закончился.',
       boardOpen: 'Открыть',
       boardSub: 'игроков: {m} · раундов: {n} · {dur} на раунд',
-      boardLobby: 'Заходите и вводите код! Уже {m} игроков'
+      boardLobby: 'Заходите и вводите код! Уже {m} игроков',
+      readyBtn: '✅ Готов к следующему раунду',
+      readyCancel: 'Отменить готовность',
+      readyCount: 'Готовы {n}/{m} · Раунд начнётся сам, когда будут готовы все в сети',
+      readyWaiting: 'Ещё не готовы: {names}',
+      adminReady: ' · готовы к раунду {n}/{m}',
+      boardReady: 'Готовы к следующему раунду: {n}/{m} — старт, когда готовы все',
+      err_not_ready: 'Ещё не все готовы.'
     }
   };
 

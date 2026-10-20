@@ -63,6 +63,9 @@ body.touch #help { left: 120px; bottom: 16px; }
 /* 대회: 게임방 화면 */
 .code-input { text-align: center; font-size: 22px; font-weight: 700; letter-spacing: 6px; }
 .card.wide { max-width: 640px; }
+.ready-box { margin: 0 0 16px; }
+.ready-box button.is-ready { background: #334155; color: #e8ecf4; }
+.ready-box p { margin: 8px 0 0; }
 .room-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-bottom: 12px;
   color: #9aa7c2; font-size: 14px; text-align: left; }
 .code-chip { background: #0f1522; border: 1px solid #33405e; border-radius: 999px; padding: 4px 12px; color: #fde047;

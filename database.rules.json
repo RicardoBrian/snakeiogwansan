@@ -115,6 +115,14 @@
               }
             }
           }
+        },
+        "ready": {
+          "$rk": {
+            "$sid": {
+              ".write": "$sid.matches(/^[0-9A-Za-z]{1,12}$/) && root.child('rooms').child($code).child('state/phase').val() == 'results' && root.child('rooms').child($code).child('state/roundKey').val() == $rk",
+              ".validate": "newData.isBoolean()"
+            }
+          }
         }
       }
     }

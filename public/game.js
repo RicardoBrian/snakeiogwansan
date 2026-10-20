@@ -7,7 +7,7 @@
   const SEND_INTERVAL = 100;     // 내 위치 전송 주기(ms) = 초당 10회
   const STALE_MS = 4000;         // 이 시간 동안 소식 없는 플레이어는 숨김
   const INTERP_DELAY = 100;      // 다른 플레이어 몸통은 이만큼 과거 시점으로 보간해서 그림 (머리는 현재 시각으로 예측)
-  const PREDICT_MAX = 400;       // 머리 예측 최대 시간(ms)
+  const PREDICT_MAX = 250;       // 머리 예측 최대 시간(ms) — 길게 예측하면 방향을 틀 때 없는 목이 생김
   const HIT_RATIO = 0.9;         // 머리와 몸통이 (반지름 합 × 이 값)보다 가까우면 충돌
   const SPEED = 170, BOOST_SPEED = 340;
   const START_MASS = 20, BOOST_FLOOR = 10, BOOST_RESUME = 13, BOOST_COST = 2;
@@ -30,6 +30,8 @@
   const lengthOf = (m) => 60 + 8 * Math.pow(m, 0.85);
   const turnRateOf = (m) => Math.max(2.4, 5 - m / 250);
   const foodRadius = (v) => Math.min(11, 4 + v * 1.5);
+  // 몸통 굵기 비율: 꼬리 쪽 40%는 점점 가늘어짐 (t: 0=머리, 1=꼬리). 그리기와 충돌 판정에 똑같이 사용
+  const taper = (t) => 1 - 0.4 * Math.max(0, (t - 0.6) / 0.4);
   const hueOf = (sid) => {
     let h = 7;
     for (const c of sid) h = (h * 131 + c.charCodeAt(0) * 17) % 360;
@@ -294,11 +296,16 @@
   }
 
   function hitsSnake(x, y, rad, s) {
-    const rr = radiusOf(s.mass), lim = (rad + rr) * HIT_RATIO, lim2 = lim * lim;
-    const near = (p) => { const dx = p.x - x, dy = p.y - y; return dx * dx + dy * dy < lim2; };
-    if (s.neck && s.neck.some(near)) return true;
-    if (x < s.minX - lim || x > s.maxX + lim || y < s.minY - lim || y > s.maxY + lim) return false;
-    return s.pts.some(near);
+    const rr = radiusOf(s.mass), maxLim = (rad + rr) * HIT_RATIO;
+    const near = (p, t) => {
+      const lim = (rad + rr * taper(t)) * HIT_RATIO, dx = p.x - x, dy = p.y - y;
+      return dx * dx + dy * dy < lim * lim;
+    };
+    if (s.neck && s.neck.some((p) => near(p, 0))) return true;
+    if (x < s.minX - maxLim || x > s.maxX + maxLim || y < s.minY - maxLim || y > s.maxY + maxLim) return false;
+    const p = s.pts, last = Math.max(1, p.length - 1);
+    for (let i = p.length - 1; i >= 0; i--) if (near(p[i], (p.length - 1 - i) / last)) return true;
+    return false;
   }
 
   // ---------- 내 뱀 ----------
@@ -494,7 +501,7 @@
     if (pres && now() - (+pres.t || 0) < 25000) { setLoginError('errDup'); return; }
     profile = { sid, name };
     me = null;
-    room = { code, meta, state: null, standings: {}, results: {}, memberCount: 0,
+    room = { code, meta, state: null, standings: {}, results: {}, memberCount: 0, members: {}, presence: {}, ready: {},
       myBest: 0, savedBest: 0, bestKey: null, spawnedKey: null, refs: [] };
     attachWorld(`rooms/${code}/`);
     db.ref(`rooms/${code}/members/${sid}`).set({ name });
@@ -522,7 +529,14 @@
     });
     R('standings').on('value', (snap) => { if (room === cur) { room.standings = snap.val() || {}; renderRoom(); } });
     R('roundResults').on('value', (snap) => { if (room === cur) { room.results = snap.val() || {}; renderRoom(); } });
-    R('members').on('value', (snap) => { if (room === cur) { room.memberCount = snap.numChildren(); renderRoom(); } });
+    R('members').on('value', (snap) => {
+      if (room !== cur) return;
+      room.members = snap.val() || {};
+      room.memberCount = Object.keys(room.members).length;
+      renderRoom();
+    });
+    R('presence').on('value', (snap) => { if (room === cur) { room.presence = snap.val() || {}; renderRoom(); maybeAdvance(); } });
+    R('ready').on('value', (snap) => { if (room === cur) { room.ready = snap.val() || {}; renderRoom(); maybeAdvance(); } });
     setLoginError(null);
     $('login').classList.add('hidden');
     renderRoom();
@@ -562,6 +576,39 @@
       db.ref(`rooms/${code}/roundScores/${rk}/${killer.sid}`).update({ name: killer.name, kills: SV.increment(1) });
       db.ref(`${base}notices/${killer.sid}`).push({ by: profile.name });
     }
+  }
+
+  // ----- 라운드 사이: 접속 중인 학생이 모두 '준비'하면 자동으로 다음 라운드 -----
+  const ONLINE_MS = 30000;
+  function readyInfo() {
+    const st = room.state || {}, rk = st.roundKey, tt = now();
+    const r = (rk && room.ready[rk]) || {};
+    const online = Object.entries(room.presence || {})
+      .filter(([, v]) => v && tt - (+v.t || 0) < ONLINE_MS).map(([sid]) => sid);
+    const ready = online.filter((sid) => r[sid] === true);
+    const waiting = online.filter((sid) => r[sid] !== true)
+      .map((sid) => (room.members[sid] && room.members[sid].name) || sid);
+    return { rk, online, ready, waiting, mine: r[profile.sid] === true };
+  }
+  let advanceAt = 0;
+  function maybeAdvance() {
+    const st = room && room.state;
+    if (!st || st.phase !== 'results' || (st.round || 0) >= ((room.meta || {}).rounds || 0)) return;
+    const info = readyInfo();
+    if (!info.online.length || info.waiting.length) return;
+    if (Date.now() - advanceAt < 3000) return;
+    advanceAt = Date.now();
+    // 서버가 다시 한 번 모두 준비됐는지 확인한 뒤에만 시작함
+    fetch('api/admin', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ action: 'autoAdvance', code: room.code })
+    }).catch(() => {});
+  }
+  function toggleReady() {
+    if (!room || !room.state || room.state.phase !== 'results') return;
+    const info = readyInfo();
+    db.ref(`rooms/${room.code}/ready/${info.rk}/${profile.sid}`).set(info.mine ? null : true);
   }
 
   const fmtTime = (ms) => {
@@ -663,6 +710,18 @@
     $('rpTitle').textContent = title;
     $('rpSub').textContent = sub;
 
+    const canReady = st.phase === 'results' && st.round < total;
+    $('readyBox').classList.toggle('hidden', !canReady);
+    if (canReady) {
+      const info = readyInfo();
+      const btn = $('readyBtn');
+      btn.textContent = t(info.mine ? 'readyCancel' : 'readyBtn');
+      btn.classList.toggle('is-ready', info.mine);
+      let txt = t('readyCount', { n: info.ready.length, m: info.online.length });
+      if (info.waiting.length && info.waiting.length <= 8) txt += ' · ' + t('readyWaiting', { names: info.waiting.join(', ') });
+      $('readyText').textContent = txt;
+    }
+
     const showMine = st.phase === 'results' || st.phase === 'finished';
     $('rpMine').classList.toggle('hidden', !showMine);
     if (showMine) {
@@ -732,6 +791,7 @@
     $('login').classList.remove('hidden');
   });
   $('leaveBtn').addEventListener('click', () => leaveRoom(false));
+  $('readyBtn').addEventListener('click', toggleReady);
 
   // 명예의 전당
   let fame = [];
@@ -846,7 +906,7 @@
     ctx.lineWidth = 1.5;
     for (let i = n - 1; i >= 0; i--) {
       const t = i / Math.max(1, n - 1);
-      const rr = r * (1 - 0.4 * Math.max(0, (t - 0.6) / 0.4));
+      const rr = r * taper(t);
       ctx.fillStyle = (i >> 1) % 2 ? c2 : c1;
       ctx.beginPath(); ctx.arc(pts[i].x, pts[i].y, rr, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
     }

@@ -30,7 +30,7 @@
   const now = () => Date.now() + serverOffset;
   db.ref('.info/serverTimeOffset').on('value', (s) => { serverOffset = s.val() || 0; });
 
-  const S = { meta: null, state: null, standings: {}, results: {}, live: {}, liveKey: null, members: 0 };
+  const S = { meta: null, state: null, standings: {}, results: {}, live: {}, liveKey: null, members: 0, presence: {}, ready: {} };
   const ref = (p) => db.ref(`rooms/${code}/${p}`);
   ref('meta').on('value', (s) => { S.meta = s.val(); render(); });
   ref('state').on('value', (s) => {
@@ -48,6 +48,14 @@
   ref('standings').on('value', (s) => { S.standings = s.val() || {}; render(); });
   ref('roundResults').on('value', (s) => { S.results = s.val() || {}; render(); });
   ref('members').on('value', (s) => { S.members = s.numChildren(); render(); });
+  ref('presence').on('value', (s) => { S.presence = s.val() || {}; render(); });
+  ref('ready').on('value', (s) => { S.ready = s.val() || {}; render(); });
+  // 다음 라운드 준비 현황 (접속 중인 학생 기준)
+  function readyCount(X, tt) {
+    const r = (X.state && X.state.roundKey && X.ready[X.state.roundKey]) || {};
+    const online = Object.entries(X.presence || {}).filter(([, v]) => v && tt - (+v.t || 0) < 30000).map(([sid]) => sid);
+    return { n: online.filter((sid) => r[sid] === true).length, m: online.length };
+  }
 
   function table(id, head, rows, numFrom) {
     const tb = $(id);
@@ -97,7 +105,9 @@
     } else if (st.phase === 'results') phaseKey = 'phResults';
     else if (st.phase === 'finished') phaseKey = 'phFinished';
     $('phase').textContent = t(phaseKey, { r: st.round || 0, n: meta.rounds });
-    $('sub').textContent = t('boardSub', { m: S.members, n: meta.rounds, dur: fmtTime(meta.duration * 1000) });
+    $('sub').textContent = st.phase === 'results'
+      ? t('boardReady', readyCount(S, tt))
+      : t('boardSub', { m: S.members, n: meta.rounds, dur: fmtTime(meta.duration * 1000) });
     $('timer').textContent = timer;
     $('timer').classList.toggle('low', low);
 

@@ -205,7 +205,7 @@
       refs.forEach((r) => r.off());
       refs = [];
       sel = code;
-      R = { meta: null, state: null, standings: {}, live: {}, liveKey: null, members: 0 };
+      R = { meta: null, state: null, standings: {}, live: {}, liveKey: null, members: 0, presence: {}, ready: {} };
       renderIndex();
       $('detail').classList.toggle('hidden', !code);
       if (!code) return;
@@ -225,6 +225,8 @@
       });
       ref('standings').on('value', (s) => { R.standings = s.val() || {}; renderStandings(); });
       ref('members').on('value', (s) => { R.members = s.numChildren(); renderDetail(); });
+      ref('presence').on('value', (s) => { R.presence = s.val() || {}; renderDetail(); });
+      ref('ready').on('value', (s) => { R.ready = s.val() || {}; renderDetail(); });
       $('detail').scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
 
@@ -251,7 +253,7 @@
       $('dInfo').textContent = t('roomInfo', {
         r: st.round || 0, n: meta.rounds, m: R.members,
         dur: fmtTime((meta.duration || 0) * 1000), pts: (meta.points || []).join(','), kb: meta.killBonus || 0
-      });
+      }) + (st.phase === 'results' ? t('adminReady', readyCount(R, now())) : '');
       const canStart = (st.phase === 'lobby' || st.phase === 'results') && (st.round || 0) < meta.rounds;
       const sb = $('startRoundBtn');
       sb.disabled = !canStart;
@@ -322,6 +324,13 @@
     }, 500);
 
     addEventListener('langchange', () => { renderIndex(); renderDetail(); renderStandings(); renderLiveRound(); });
+  }
+
+  // 다음 라운드 준비 현황 (접속 중인 학생 기준)
+  function readyCount(X, tt) {
+    const r = (X.state && X.state.roundKey && X.ready[X.state.roundKey]) || {};
+    const online = Object.entries(X.presence || {}).filter(([, v]) => v && tt - (+v.t || 0) < 30000).map(([sid]) => sid);
+    return { n: online.filter((sid) => r[sid] === true).length, m: online.length };
   }
 
   function downloadCsv(rows, name) {

@@ -19,3 +19,12 @@ td.when { white-space: nowrap; color: var(--ink-soft); }
 .chip.p1 { background: #8a6512; }
 .chip.p2 { background: var(--green); }
 .overlap { color: #b45309; font-weight: 800; }
+.publish-row { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; justify-content: space-between; }
+.publish-row .hint { margin: 6px 0 0; }
+.state-chip { display: inline-block; padding: 1px 10px; border-radius: 999px; background: #ccc; color: #222; font-size: 13px; font-weight: 800; }
+.state-chip.on { background: var(--green); color: #fff; }
+.state-chip.off { background: #8a7d6b; color: #fff; }
+.sel { display: flex; align-items: center; gap: 6px; margin: 0 0 4px; cursor: pointer; }
+.sel input { width: 20px; height: 20px; accent-color: var(--green); }
+.sel.on .chip { outline: 3px solid var(--green); outline-offset: 1px; }
+.stat.sel-stat b { color: var(--green); }

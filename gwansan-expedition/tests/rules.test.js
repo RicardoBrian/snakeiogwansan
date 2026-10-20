@@ -66,3 +66,40 @@ test('관리자만 목록을 읽을 수 있고, 관리자도 수정·삭제는 �
 test('다른 컬렉션은 모두 막혀 있다', async () => {
   await assertFails(setDoc(doc(student(), 'other/x'), { a: 1 }));
 });
+
+// ---------- 선정 결과 ----------
+const KEY = 'a'.repeat(64);
+const adminDb = () => env.authenticatedContext('admin-uid', { email: ADMIN, email_verified: true }).firestore();
+const result = (over = {}) => ({ selected: ['오목'], applied: ['끄투온라인', '오목'], updatedAt: serverTimestamp(), ...over });
+
+test('관리자만 결과를 쓰고 공개 스위치를 바꿀 수 있다', async () => {
+  const admin = adminDb(), db = student();
+  await assertSucceeds(setDoc(doc(admin, `results/${KEY}`), result()));
+  await assertSucceeds(setDoc(doc(admin, 'settings/results'), { open: true }));
+  await assertFails(setDoc(doc(db, `results/${KEY}`), result()));
+  await assertFails(setDoc(doc(db, 'settings/results'), { open: true }));
+  await assertFails(setDoc(doc(admin, `results/${KEY}`), result({ selected: ['테트리스'] })));  // 신청 안 한 종목 선정
+  await assertFails(setDoc(doc(admin, `results/${KEY}`), result({ name: '김관산' })));           // 이름 저장 금지
+  await assertFails(setDoc(doc(admin, 'results/short'), result()));
+});
+
+test('학생은 공개 후에만, 키를 알 때만 결과 1개를 읽을 수 있다', async () => {
+  await env.withSecurityRulesDisabled(async c => {
+    const f = c.firestore();
+    await setDoc(doc(f, `results/${KEY}`), result({ updatedAt: new Date() }));
+    await setDoc(doc(f, 'settings/results'), { open: false });
+  });
+  const db = student();
+  await assertSucceeds(getDoc(doc(db, 'settings/results')));
+  await assertFails(getDoc(doc(db, `results/${KEY}`)));                     // 공개 전
+  await assertSucceeds(setDoc(doc(adminDb(), 'settings/results'), { open: true }));
+  await assertSucceeds(getDoc(doc(db, `results/${KEY}`)));                  // 공개 후
+  await assertSucceeds(getDoc(doc(db, `results/${'b'.repeat(64)}`)));        // 없는 키 = 빈 결과 (존재 여부만)
+  await assertFails(getDocs(collection(db, 'results')));                    // 목록은 불가
+  await assertFails(deleteDoc(doc(db, `results/${KEY}`)));
+});
+
+test('공개 스위치 문서가 없으면 결과를 읽을 수 없다', async () => {
+  await env.withSecurityRulesDisabled(c => setDoc(doc(c.firestore(), `results/${KEY}`), result({ updatedAt: new Date() })));
+  await assertFails(getDoc(doc(student(), `results/${KEY}`)));
+});

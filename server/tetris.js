@@ -1,6 +1,6 @@
 // 테트리스 대전 (jstris 방식, 마지막까지 살아남은 학생이 1위)
 // 데이터 위치: tetris/rooms/{code}   (방 코드 4자리, 관리자만 만들 수 있음)
-//   rooms/{code}   { name, created, game: { no, id('g1'…), seed, start, over? } }
+//   rooms/{code}   { name, created, opts: { games(판 수), levelSec, pressureFrom(0=끔), points[] }, game: { no, id('g1'…), seed, start, over? } }
 //   lobby/{code}/{학번}            { n, t }   방에 들어와 있는 학생 (2초마다 갱신)
 //   entries/{code}/{판 id}/{학번}  { n }      그 판에 참가한 학생 (시작 3초 뒤까지만 쓸 수 있음)
 //   results/{code}/{판 id}/{학번}  { t, sent, lines, pieces, win?, stop?, dc? }  탈락/1위/강제 종료 기록 (한 번만)
@@ -8,10 +8,11 @@
 //   attacks/{code}/{학번}/{id}     { l(줄 수), g, f }  받을 공격
 // 판 진행(블록 놓기, 공격)은 학생 브라우저끼리 주고받고, 방/판 시작·종료만 서버(여기)가 씁니다.
 
-import { ApiError, fb, roomCode } from './firebase.js';
+import { ApiError, fb, int, roomCode } from './firebase.js';
 
 const COUNTDOWN_MS = 5000; // 시작 버튼 → 실제 시작까지
 const ROOM_DATA = ['lobby', 'entries', 'results', 'boards', 'attacks'];
+const DEFAULT_POINTS = [10, 7, 5, 3, 2, 2, 1, 1, 1, 1, 1, 1];
 
 async function loadRoom(env, code) {
   const room = await fb(env, 'GET', `tetris/rooms/${code}`);
@@ -23,13 +24,22 @@ export const TETRIS_ADMIN = {
   async tetrisCreate(env, body) {
     const name = String(body.name || '').trim().slice(0, 20);
     if (!name) throw new ApiError('bad_request');
+    let points = Array.isArray(body.points) ? body.points : DEFAULT_POINTS;
+    points = points.slice(0, 30).map((p) => int(p, 0, 100));
+    if (!points.length) throw new ApiError('bad_request');
+    const opts = {
+      games: int(body.games == null ? 8 : body.games, 1, 30),
+      levelSec: int(body.levelSec == null ? 30 : body.levelSec, 10, 120),
+      pressureFrom: int(body.pressureFrom == null ? 120 : body.pressureFrom, 0, 600),
+      points
+    };
     let code = null;
     for (let i = 0; i < 30 && !code; i++) {
       const c = String(1000 + Math.floor(Math.random() * 9000));
       if ((await fb(env, 'GET', `tetris/rooms/${c}/name`)) === null) code = c;
     }
     if (!code) throw new ApiError('server', 500, 'no free code');
-    await fb(env, 'PUT', `tetris/rooms/${code}`, { name, created: Date.now() });
+    await fb(env, 'PUT', `tetris/rooms/${code}`, { name, created: Date.now(), opts });
     return { code };
   },
 
@@ -39,6 +49,7 @@ export const TETRIS_ADMIN = {
     const code = roomCode(body.code);
     const room = await loadRoom(env, code);
     const no = ((room.game && Number(room.game.no)) || 0) + 1;
+    if (room.opts && room.opts.games && no > room.opts.games) throw new ApiError('bad_phase', 409);
     await fb(env, 'DELETE', `tetris/attacks/${code}`);
     await fb(env, 'PUT', `tetris/rooms/${code}/game`, {
       no, id: 'g' + no, seed: Math.floor(Math.random() * 2147483647), start: Date.now() + COUNTDOWN_MS

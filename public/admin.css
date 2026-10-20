@@ -116,6 +116,7 @@ details.box summary { cursor: pointer; font-weight: 700; }
 #status { font-size: 18px; font-weight: 700; }
 #oGamesBody td { white-space: nowrap; }
 /* 테트리스 실시간 보드 */
+.panel.warn { border-color: #7f1d1d; background: #2a1215; color: #fecaca; line-height: 1.6; }
 .t-thumbs { display: flex; flex-wrap: wrap; gap: 10px; }
 .t-thumbs .thumb { display: flex; flex-direction: column; align-items: center; gap: 3px; }
 .t-thumbs .tb { position: relative; border: 2px solid var(--line); border-radius: 4px; line-height: 0; }

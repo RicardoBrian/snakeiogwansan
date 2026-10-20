@@ -2,6 +2,8 @@
 
 Firebase Realtime Database + Cloudflare Pages로 동작하는 멀티플레이 뱀 게임입니다.
 
+> 📝 대회 **참가 신청 웹앱**(관산 유적 탐험대)은 [`gwansan-expedition/`](gwansan-expedition/README.md) 폴더에 있습니다. 별도 Cloudflare Pages 프로젝트로 배포합니다.
+
 ```
 public/                 정적 파일 (게임, 관리자 페이지, Firebase SDK, IBM Plex 글꼴)
 public/i18n.js          번역 (한국어 / English / 中文 / Русский)

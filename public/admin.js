@@ -1,14 +1,24 @@
 (() => {
   'use strict';
   const $ = (id) => document.getElementById(id);
+  const t = (k, p) => I18N.t(k, p);
+
+  // 게이트 화면 메시지는 키로 기억해 두었다가 언어가 바뀌면 다시 그림
+  let gateMsg = null;
+  function setGate(key, params) { gateMsg = key ? { key, params } : null; renderGate(); }
+  function renderGate() { $('gateErr').textContent = gateMsg ? t(gateMsg.key, gateMsg.params) : ''; }
+  addEventListener('langchange', renderGate);
 
   const cfg = window.FIREBASE_CONFIG || {};
   if (!cfg.databaseURL) {
-    $('gateErr').textContent = 'Firebase 설정이 없습니다. Cloudflare 환경변수 FIREBASE_DATABASE_URL 을 확인하세요.';
+    setGate('noConfig');
     return;
   }
 
   let password = '';
+
+  // 서버 오류는 코드로 받아서 현재 언어로 표시
+  const errText = (r) => t('err_' + (r.code || 'server')) + (r.detail ? ` (${r.detail})` : '');
 
   async function adminAction(action) {
     try {
@@ -17,33 +27,33 @@
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({ password, action })
       });
-      const data = await res.json().catch(() => ({ ok: false, error: `서버 오류 (${res.status})` }));
+      const data = await res.json().catch(() => ({ ok: false, code: 'server', detail: String(res.status) }));
       if (res.status === 401) {
         try { sessionStorage.removeItem('snake_admin_pw'); } catch (e) { /* 무시 */ }
       }
       return data;
     } catch (e) {
-      return { ok: false, error: '서버에 연결할 수 없습니다: ' + e.message };
+      return { ok: false, code: 'network', detail: e.message };
     }
   }
   async function run(action) {
     const r = await adminAction(action);
-    if (!r.ok) alert('실패: ' + r.error);
+    if (!r.ok) alert(t('failed', { msg: errText(r) }));
   }
 
   async function login(pw) {
     password = pw;
     const r = await adminAction('check');
-    if (!r.ok) { $('gateErr').textContent = r.error; return; }
+    if (!r.ok) { setGate('failed', { msg: errText(r) }); return; }
     try { sessionStorage.setItem('snake_admin_pw', pw); } catch (e) { /* 무시 */ }
-    $('gateErr').textContent = '';
+    setGate(null);
     $('gate').classList.add('hidden');
     $('main').classList.remove('hidden');
     start();
   }
   $('gateForm').addEventListener('submit', (e) => {
     e.preventDefault();
-    $('gateErr').textContent = '확인 중...';
+    setGate('checking');
     login($('pw').value);
   });
   try {
@@ -60,24 +70,26 @@
     db.ref('.info/serverTimeOffset').on('value', (s) => { serverOffset = s.val() || 0; });
 
     // 라운드 상태
-    db.ref('settings/locked').on('value', (s) => {
-      const locked = !!s.val();
-      $('status').textContent = locked ? '⏸ 입장 잠금 (라운드 종료됨)' : '🟢 게임 진행 중 (입장 가능)';
+    let locked = null;
+    function renderStatus() {
+      if (locked === null) return;
+      $('status').textContent = t(locked ? 'statusLocked' : 'statusOpen');
       $('status').style.color = locked ? '#f87171' : '#4ade80';
-    });
+    }
+    db.ref('settings/locked').on('value', (s) => { locked = !!s.val(); renderStatus(); });
     $('openBtn').onclick = () => run('unlock');
-    $('lockBtn').onclick = () => { if (confirm('라운드를 종료할까요? 게임 중인 학생들의 게임이 끝납니다.')) run('lock'); };
+    $('lockBtn').onclick = () => { if (confirm(t('confirmLock'))) run('lock'); };
 
     // 현재 접속자
     let players = {};
     db.ref('players').on('value', (s) => { players = s.val() || {}; });
     function renderLive() {
-      const t = Date.now() + serverOffset;
+      const nowT = Date.now() + serverOffset;
       const list = Object.entries(players)
-        .filter(([, v]) => v && t - (+v.t || 0) < 4000)
+        .filter(([, v]) => v && nowT - (+v.t || 0) < 4000)
         .map(([sid, v]) => ({ sid, name: v.n || '', m: Math.floor(+v.m || 0) }))
         .sort((a, b) => b.m - a.m);
-      $('liveCount').textContent = `(${list.length}명)`;
+      $('liveCount').textContent = t('liveCount', { n: list.length });
       fill($('liveBody'), list.map((p, i) => [i + 1, p.sid, p.name, p.m]), [3]);
     }
     setInterval(renderLive, 1000);
@@ -101,21 +113,21 @@
     $('sortBest').onclick = () => { sortKey = 'best'; $('sortBest').classList.add('on'); $('sortKills').classList.remove('on'); renderRank(); };
     $('sortKills').onclick = () => { sortKey = 'kills'; $('sortKills').classList.add('on'); $('sortBest').classList.remove('on'); renderRank(); };
 
+    addEventListener('langchange', () => { renderStatus(); renderLive(); });
+
     $('csvBtn').onclick = () => {
-      const rows = [['순위', '학번', '이름', '최고점수', '처치', '판수']].concat(
-        sorted().map((v, i) => [i + 1, v.sid, v.name, v.best, v.kills, v.games]));
+      const head = ['colRank', 'colSid', 'colName', 'colBest', 'colKills', 'colGames'].map((k) => t(k));
+      const rows = [head].concat(sorted().map((v, i) => [i + 1, v.sid, v.name, v.best, v.kills, v.games]));
       const csv = '﻿' + rows.map((r) => r.map((c) => `"${String(c).replace(/"/g, '""')}"`).join(',')).join('\r\n');
       const a = document.createElement('a');
       a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }));
-      a.download = `snake_순위_${new Date().toISOString().slice(0, 16).replace(/[:T]/g, '-')}.csv`;
+      a.download = `snake_ranking_${new Date().toISOString().slice(0, 16).replace(/[:T]/g, '-')}.csv`;
       a.click();
     };
 
-    $('clearFood').onclick = () => { if (confirm('맵의 먹이를 모두 지울까요? (게임 중인 학생이 있으면 자동으로 다시 생깁니다)')) run('clearFood'); };
+    $('clearFood').onclick = () => { if (confirm(t('confirmFood'))) run('clearFood'); };
     $('clearScores').onclick = () => {
-      if (confirm('전체 기록을 초기화할까요? 되돌릴 수 없습니다.') && confirm('정말 초기화합니까?')) {
-        run('resetScores');
-      }
+      if (confirm(t('confirmReset1')) && confirm(t('confirmReset2'))) run('resetScores');
     };
   }
 

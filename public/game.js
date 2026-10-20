@@ -15,6 +15,7 @@
   const HIDDEN_LIMIT = 3000;     // 다른 창으로 나가 있으면 탈락까지 시간(ms)
 
   const $ = (id) => document.getElementById(id);
+  const t = (k, p) => I18N.t(k, p);
   const rand = (a, b) => a + Math.random() * (b - a);
   const clamp = (v, a, b) => (v < a ? a : v > b ? b : v);
   const angDiff = (t, a) => {
@@ -36,8 +37,9 @@
   // ---------- Firebase 초기화 ----------
   const cfg = window.FIREBASE_CONFIG || {};
   if (!cfg.databaseURL) {
-    $('loginError').textContent = 'Firebase 설정이 없습니다. Cloudflare 환경변수 FIREBASE_DATABASE_URL 을 확인하세요.';
-    $('connText').textContent = '';
+    const showNoConfig = () => { $('loginError').textContent = t('noConfig'); };
+    showNoConfig();
+    addEventListener('langchange', showNoConfig);
     $('joinBtn').disabled = true;
     return;
   }
@@ -52,22 +54,37 @@
   const now = () => Date.now() + serverOffset;
   db.ref('.info/serverTimeOffset').on('value', (s) => { serverOffset = s.val() || 0; });
 
+  // 화면 문구는 키로 기억해 두었다가 언어가 바뀌면 다시 그림
+  let loginMsg = null, deadMsg = null, deadErr = null;
+  function setLoginError(key, params) { loginMsg = key ? { key, params } : null; renderTexts(); }
+  function renderTexts() {
+    $('connText').textContent = t(connected ? 'connected' : 'connecting');
+    $('loginError').textContent = loginMsg ? t(loginMsg.key, loginMsg.params) : '';
+    $('deadError').textContent = deadErr ? t(deadErr) : '';
+    if (deadMsg) {
+      $('deadTitle').textContent = t(deadMsg.title);
+      $('deadMsg').textContent = t(deadMsg.key, deadMsg.params);
+    }
+  }
+  addEventListener('langchange', () => { renderTexts(); renderFame(); updateHud(); });
+
   let connected = false;
   db.ref('.info/connected').on('value', (s) => {
     connected = !!s.val();
-    $('connText').textContent = connected ? '🟢 서버 연결됨' : '🔴 서버에 연결 중...';
+    renderTexts();
   });
 
   let locked = false;
   db.ref('settings/locked').on('value', (s) => {
     locked = !!s.val();
     updateLockText();
-    if (locked && me && me.alive) endGame('라운드 종료', '관리자가 라운드를 종료했습니다.', null, false);
+    if (locked && me && me.alive) endGame('roundOver', 'roundEnded', null, null, false);
   });
   function updateLockText() {
-    if (locked) $('loginError').textContent = '⏸ 지금은 입장할 수 없습니다. (관리자 대기 중)';
-    else if ($('loginError').textContent.startsWith('⏸')) $('loginError').textContent = '';
+    if (locked) setLoginError('locked');
+    else if (loginMsg && loginMsg.key === 'locked') setLoginError(null);
   }
+  renderTexts();
 
   // ---------- 상태 ----------
   let me = null;                    // 내 뱀
@@ -76,7 +93,8 @@
   const foods = new Map();          // 먹이
   const mouse = { x: innerWidth / 2 + 100, y: innerHeight / 2 };
   let steerMode = 'mouse', keyLeft = false, keyRight = false;
-  let boostKey = false, boostMouse = false;
+  let boostKey = false, boostMouse = false, boostTouch = false;
+  let steerId = null, boostId = null;
   const cam = { x: WORLD / 2, y: WORLD / 2, scale: 0.6 };
   let sendAcc = 0, boostDropAcc = 0, hostAcc = 0, hudAcc = 0, saveAcc = 0;
   let noticeSid = null, hiddenTimer = null;
@@ -249,7 +267,7 @@
 
   // ---------- 내 뱀 ----------
   function spawn() {
-    if (locked) { $('deadError').textContent = '지금은 입장할 수 없습니다.'; return false; }
+    if (locked) { deadErr = 'lockedShort'; renderTexts(); return false; }
     let x = WORLD / 2, y = WORLD / 2;
     for (let tries = 0; tries < 30; tries++) {
       x = rand(400, WORLD - 400); y = rand(400, WORLD - 400);
@@ -272,7 +290,8 @@
     $('login').classList.add('hidden');
     $('dead').classList.add('hidden');
     $('hud').classList.remove('hidden');
-    $('deadError').textContent = '';
+    deadErr = null;
+    renderTexts();
     sendState();
     return true;
   }
@@ -298,7 +317,7 @@
     // 점수가 바닥(BOOST_FLOOR)까지 떨어지면 부스트가 꺼지고, BOOST_RESUME 이상 모여야 다시 켜짐 (깜빡임 방지)
     if (m.mass <= BOOST_FLOOR) m.tired = true;
     else if (m.tired && m.mass >= BOOST_RESUME) m.tired = false;
-    m.b = (boostKey || boostMouse) && !m.tired;
+    m.b = (boostKey || boostMouse || boostTouch) && !m.tired;
     const sp = m.b ? BOOST_SPEED : SPEED;
     m.x += Math.cos(m.a) * sp * dt;
     m.y += Math.sin(m.a) * sp * dt;
@@ -314,11 +333,11 @@
     if (m.mass > m.peak) m.peak = m.mass;
     trailAdvance(m, m.x, m.y, lengthOf(m.mass));
 
-    if (m.x < 0 || m.x > WORLD || m.y < 0 || m.y > WORLD) return die('벽에 부딪혔습니다!', null);
+    if (m.x < 0 || m.x > WORLD || m.y < 0 || m.y > WORLD) return die('deathWall', null, null);
     const rad = radiusOf(m.mass);
     if (now() - m.spawnAt > SPAWN_GRACE) {
       for (const r of remotes.values()) {
-        if (!r.stale && hitsSnake(m.x, m.y, rad, r)) return die(`${r.name}님의 몸에 부딪혔습니다!`, r);
+        if (!r.stale && hitsSnake(m.x, m.y, rad, r)) return die('deathBody', { name: r.name }, r);
       }
     }
     const er = rad + 14;
@@ -329,9 +348,9 @@
     }
   }
 
-  function die(msg, killer) { endGame('게임 오버', msg, killer, true); }
+  function die(msgKey, params, killer) { endGame('gameOver', msgKey, params, killer, true); }
 
-  function endGame(title, msg, killer, dropFood) {
+  function endGame(titleKey, msgKey, params, killer, dropFood) {
     if (!me || !me.alive) return;
     me.alive = false;
     clearTimeout(hiddenTimer);
@@ -351,8 +370,9 @@
     db.ref().update(upd);
     recordScore(score, killer);
 
-    $('deadTitle').textContent = title;
-    $('deadMsg').textContent = msg;
+    deadMsg = { title: titleKey, key: msgKey, params };
+    deadErr = null;
+    renderTexts();
     $('deadScore').textContent = score;
     $('deadKills').textContent = me.kills;
     $('deadBest').textContent = '...';
@@ -393,7 +413,7 @@
         s.ref.remove();
         if (me && me.alive) {
           me.kills++;
-          toast(`🎯 ${String(v.by || '').slice(0, 12)}님을 잡았습니다!`);
+          toast(t('killToast', { name: String(v.by || '').slice(0, 12) }));
         }
       });
     });
@@ -418,22 +438,21 @@
     e.preventDefault();
     const sid = $('sidInput').value.trim();
     const name = $('nameInput').value.trim();
-    const err = $('loginError');
-    if (!/^[0-9A-Za-z]{1,12}$/.test(sid)) { err.textContent = '학번은 숫자/영문 12자 이내로 입력하세요.'; return; }
-    if (!name || name.length > 10) { err.textContent = '이름을 입력하세요. (10자 이내)'; return; }
-    if (!connected) { err.textContent = '서버에 연결 중입니다. 잠시 후 다시 시도하세요.'; return; }
+    if (!/^[0-9A-Za-z]{1,12}$/.test(sid)) { setLoginError('errSid'); return; }
+    if (!name || name.length > 10) { setLoginError('errName'); return; }
+    if (!connected) { setLoginError('errConnecting'); return; }
     if (locked) { updateLockText(); return; }
     $('joinBtn').disabled = true;
     try {
       const snap = await db.ref('players/' + sid).get();
       const v = snap.val();
-      if (v && now() - (+v.t || 0) < STALE_MS) { err.textContent = '이미 접속 중인 학번입니다.'; return; }
+      if (v && now() - (+v.t || 0) < STALE_MS) { setLoginError('errDup'); return; }
       try { localStorage.setItem('snake_sid', sid); localStorage.setItem('snake_name', name); } catch (e2) { /* 무시 */ }
-      err.textContent = '';
+      setLoginError(null);
       profile = { sid, name };
       spawn();
     } catch (ex) {
-      err.textContent = '입장 실패: ' + ex.message;
+      setLoginError('errJoin', { msg: ex.message });
     } finally {
       $('joinBtn').disabled = false;
     }
@@ -446,14 +465,19 @@
   });
 
   // 명예의 전당
+  let fame = [];
   db.ref('scores').orderByChild('best').limitToLast(10).on('value', (s) => {
     const list = [];
     s.forEach((c) => { const v = c.val() || {}; if (v.best) list.push(v); });
     list.sort((a, b) => b.best - a.best);
+    fame = list;
+    renderFame();
+  });
+  function renderFame() {
     const ol = $('fameList');
     ol.innerHTML = '';
-    if (!list.length) { const li = document.createElement('li'); li.className = 'muted'; li.textContent = '기록 없음'; ol.appendChild(li); }
-    for (const v of list) {
+    if (!fame.length) { const li = document.createElement('li'); li.className = 'muted'; li.textContent = t('noRecords'); ol.appendChild(li); }
+    for (const v of fame) {
       const li = document.createElement('li');
       li.textContent = `${v.sid || ''} ${v.name || ''}`;
       const sp = document.createElement('span');
@@ -461,13 +485,46 @@
       li.appendChild(sp);
       ol.appendChild(li);
     }
-  });
+  }
+  renderFame();
 
   // ---------- 입력 ----------
-  addEventListener('mousemove', (e) => { mouse.x = e.clientX; mouse.y = e.clientY; steerMode = 'mouse'; });
-  addEventListener('mousedown', (e) => { if (e.button === 0 && me && me.alive) boostMouse = true; });
-  addEventListener('mouseup', () => { boostMouse = false; });
-  addEventListener('blur', () => { boostMouse = boostKey = keyLeft = keyRight = false; });
+  // 마우스: 커서 방향으로 이동, 왼쪽 버튼 = 부스트
+  // 터치: 손가락 위치 방향으로 이동, ⚡ 버튼 = 부스트 (두 손가락 동시 사용 가능)
+  const boostBtn = $('boostBtn');
+  if (matchMedia('(pointer: coarse)').matches) document.body.classList.add('touch');
+  function setBoostTouch(on, id) {
+    boostTouch = on;
+    boostId = on ? id : null;
+    boostBtn.classList.toggle('active', on);
+  }
+  addEventListener('pointermove', (e) => {
+    if (e.pointerType === 'mouse') { mouse.x = e.clientX; mouse.y = e.clientY; steerMode = 'mouse'; }
+  });
+  $('game').addEventListener('pointerdown', (e) => {
+    if (e.pointerType === 'mouse') {
+      if (e.button === 0 && me && me.alive) boostMouse = true;
+      return;
+    }
+    document.body.classList.add('touch');
+    steerId = e.pointerId;
+    mouse.x = e.clientX; mouse.y = e.clientY; steerMode = 'mouse';
+  });
+  $('game').addEventListener('pointermove', (e) => {
+    if (e.pointerType !== 'mouse' && e.pointerId === steerId) { mouse.x = e.clientX; mouse.y = e.clientY; }
+  });
+  boostBtn.addEventListener('pointerdown', (e) => {
+    e.preventDefault();
+    if (me && me.alive) setBoostTouch(true, e.pointerId);
+  });
+  const pointerEnd = (e) => {
+    if (e.pointerType === 'mouse') boostMouse = false;
+    if (e.pointerId === steerId) steerId = null;
+    if (e.pointerId === boostId) setBoostTouch(false, null);
+  };
+  addEventListener('pointerup', pointerEnd);
+  addEventListener('pointercancel', pointerEnd);
+  addEventListener('blur', () => { boostMouse = boostKey = keyLeft = keyRight = false; setBoostTouch(false, null); });
   addEventListener('contextmenu', (e) => { if (me && me.alive) e.preventDefault(); });
   addEventListener('keydown', (e) => {
     if (!me || !me.alive) return;
@@ -484,7 +541,7 @@
   document.addEventListener('visibilitychange', () => {
     clearTimeout(hiddenTimer);
     if (document.hidden && me && me.alive) {
-      hiddenTimer = setTimeout(() => die('게임 화면을 벗어나 탈락했습니다.', null), HIDDEN_LIMIT);
+      hiddenTimer = setTimeout(() => die('deathHidden', null, null), HIDDEN_LIMIT);
     }
   });
 
@@ -492,6 +549,10 @@
   const canvas = $('game'), ctx = canvas.getContext('2d');
   const mini = $('minimap'), mctx = mini.getContext('2d');
   let W = 0, H = 0, DPR = 1;
+  let fontStack = 'sans-serif';
+  function readFont() { fontStack = getComputedStyle(document.body).fontFamily || 'sans-serif'; }
+  readFont();
+  addEventListener('langchange', readFont);
   function resize() {
     DPR = Math.min(window.devicePixelRatio || 1, 1.5);
     W = innerWidth; H = innerHeight;
@@ -529,7 +590,7 @@
       ctx.beginPath(); ctx.arc(ex + ca * r * 0.12, ey + sa * r * 0.12, r * 0.17, 0, Math.PI * 2); ctx.fill();
     }
     // 이름
-    ctx.font = `bold ${Math.round(14 / cam.scale)}px sans-serif`;
+    ctx.font = `bold ${Math.round(14 / cam.scale)}px ${fontStack}`;
     ctx.textAlign = 'center';
     ctx.fillStyle = isMe ? 'rgba(134,239,172,0.95)' : 'rgba(255,255,255,0.85)';
     ctx.fillText(s.name, hx, hy - r - 8 / cam.scale);
@@ -592,13 +653,14 @@
       ol.appendChild(li);
     });
     if (me && me.alive) {
-      $('scoreText').textContent = `점수 ${Math.floor(me.mass)}`;
-      $('killText').textContent = `처치 ${me.kills}`;
+      $('scoreText').textContent = t('score', { n: Math.floor(me.mass) });
+      $('killText').textContent = t('kills', { n: me.kills });
       const bt = $('boostText');
-      bt.textContent = me.tired ? '⚡ 부스트 충전 필요' : '⚡ 부스트 가능';
+      bt.textContent = t(me.tired ? 'boostOff' : 'boostOn');
       bt.className = me.tired ? 'off' : 'on';
     }
-    $('onlineText').textContent = `접속 ${alive.length}명`;
+    $('onlineText').textContent = t('online', { n: alive.length });
+    $('help').textContent = t(document.body.classList.contains('touch') ? 'helpTouch' : 'helpMouse');
 
     const k = mini.width / WORLD;
     mctx.clearRect(0, 0, mini.width, mini.height);

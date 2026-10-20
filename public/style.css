@@ -1,12 +1,12 @@
 * { box-sizing: border-box; }
 html, body { margin: 0; height: 100%; overflow: hidden; background: #0b0f17; color: #e8ecf4;
-  font-family: "Malgun Gothic", "Apple SD Gothic Neo", "Noto Sans KR", sans-serif; user-select: none; }
-#game { position: fixed; inset: 0; display: block; cursor: crosshair; }
+  user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; -webkit-tap-highlight-color: transparent; }
+#game { position: fixed; inset: 0; display: block; cursor: crosshair; touch-action: none; }
 .hidden { display: none !important; }
 
-.overlay { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center;
-  background: rgba(5, 8, 14, 0.72); z-index: 10; padding: 16px; }
-.card { width: 100%; max-width: 380px; background: #161d2b; border: 1px solid #2a3550; border-radius: 16px;
+.overlay { position: fixed; inset: 0; display: flex; justify-content: center; overflow-y: auto;
+  background: rgba(5, 8, 14, 0.72); z-index: 10; padding: 56px 16px 16px; }
+.card { width: 100%; max-width: 380px; margin: auto; background: #161d2b; border: 1px solid #2a3550; border-radius: 16px;
   padding: 28px 26px; text-align: center; box-shadow: 0 20px 60px rgba(0,0,0,.5); }
 .card h1 { margin: 0 0 6px; font-size: 34px; letter-spacing: 1px; }
 .sub { margin: 0 0 18px; color: #9aa7c2; }
@@ -14,7 +14,7 @@ html, body { margin: 0; height: 100%; overflow: hidden; background: #0b0f17; col
 .error { color: #ff7676; min-height: 1.2em; margin: 10px 0 0; font-size: 14px; }
 
 input { width: 100%; padding: 12px 14px; margin-bottom: 10px; border-radius: 10px; border: 1px solid #33405e;
-  background: #0f1522; color: #fff; font-size: 16px; outline: none; }
+  background: #0f1522; color: #fff; font-size: 16px; outline: none; user-select: text; -webkit-user-select: text; }
 input:focus { border-color: #4ade80; }
 button { width: 100%; padding: 13px; border: 0; border-radius: 10px; background: #22c55e; color: #05210f;
   font-weight: bold; font-size: 17px; cursor: pointer; margin-top: 4px; }
@@ -27,6 +27,7 @@ button.ghost:hover { background: #1f2840; }
 .fame h3 { margin: 0 0 8px; font-size: 15px; text-align: center; }
 .fame ol { margin: 0; padding-left: 26px; font-size: 14px; max-height: 220px; overflow: auto; }
 .fame li { padding: 2px 0; }
+.fame li.muted { list-style: none; }
 .fame li span { float: right; color: #fbbf24; }
 
 .result { display: flex; gap: 10px; margin-bottom: 18px; }
@@ -35,11 +36,11 @@ button.ghost:hover { background: #1f2840; }
 .result span { font-size: 13px; color: #9aa7c2; }
 
 #hud { position: fixed; inset: 0; pointer-events: none; z-index: 5; }
-#stats { position: absolute; top: 12px; left: 12px; display: flex; gap: 8px; }
-#stats span { background: rgba(15, 21, 34, .75); padding: 7px 12px; border-radius: 8px; font-weight: bold; font-size: 15px; }
+#stats { position: absolute; top: 12px; left: 12px; display: flex; flex-wrap: wrap; gap: 8px; max-width: calc(100% - 240px); }
+#stats span { background: rgba(15, 21, 34, .75); padding: 7px 12px; border-radius: 8px; font-weight: bold; font-size: 15px; white-space: nowrap; }
 #boostText.on { color: #fde047; }
 #boostText.off { color: #6f7c98; }
-#board { position: absolute; top: 12px; right: 12px; width: 210px; background: rgba(15, 21, 34, .75);
+#board { position: absolute; top: 56px; right: 12px; width: 210px; background: rgba(15, 21, 34, .75);
   border-radius: 10px; padding: 10px 12px; }
 #board h3 { margin: 0 0 6px; font-size: 14px; color: #fbbf24; }
 #board ol { margin: 0; padding-left: 22px; font-size: 13px; }
@@ -48,9 +49,35 @@ button.ghost:hover { background: #1f2840; }
 #board li.me { color: #4ade80; font-weight: bold; }
 #minimap { position: absolute; bottom: 12px; right: 12px; border-radius: 10px; background: rgba(15, 21, 34, .75);
   border: 1px solid #2a3550; }
-#help { position: absolute; bottom: 12px; left: 12px; font-size: 12px; color: #6f7c98; }
+#help { position: absolute; bottom: 12px; left: 12px; right: 180px; font-size: 12px; color: #6f7c98; }
+
+/* 터치 기기: 부스트 버튼 */
+#boostBtn { display: none; position: absolute; left: 20px; bottom: 28px; width: 84px; height: 84px; margin: 0; padding: 0;
+  border-radius: 50%; font-size: 34px; background: rgba(250, 204, 21, .22); border: 2px solid rgba(250, 204, 21, .7);
+  color: #fde047; pointer-events: auto; touch-action: none; }
+#boostBtn:hover { background: rgba(250, 204, 21, .22); }
+#boostBtn.active { background: rgba(250, 204, 21, .55); }
+body.touch #boostBtn { display: block; }
+body.touch #help { left: 120px; bottom: 16px; }
 
 #toast { position: fixed; top: 60px; left: 50%; transform: translateX(-50%); z-index: 20; pointer-events: none;
   background: rgba(34, 197, 94, .92); color: #05210f; font-weight: bold; padding: 10px 18px; border-radius: 10px;
-  opacity: 0; transition: opacity .25s; }
+  opacity: 0; transition: opacity .25s; max-width: calc(100% - 32px); text-align: center; }
 #toast.show { opacity: 1; }
+
+/* 작은 화면 (폰) */
+@media (max-width: 700px), (max-height: 500px) {
+  #stats { gap: 5px; max-width: calc(100% - 170px); }
+  #stats span { padding: 5px 8px; font-size: 13px; }
+  #board { width: 150px; padding: 7px 9px; top: 50px; }
+  #board h3 { font-size: 12px; margin-bottom: 3px; }
+  #board ol { font-size: 12px; padding-left: 18px; }
+  #board li:nth-child(n+6) { display: none; }
+  #minimap { width: 96px; height: 96px; }
+  #help { display: none; }
+  #boostBtn { width: 76px; height: 76px; font-size: 30px; left: 16px; bottom: 20px; }
+  #langChip button { padding: 4px 8px; font-size: 12px; }
+  .card { padding: 22px 18px; }
+  .card h1 { font-size: 28px; }
+  .fame ol { max-height: 150px; }
+}

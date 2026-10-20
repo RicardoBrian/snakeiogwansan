@@ -1,0 +1,11 @@
+/* 게임/관리자 공통: 글꼴과 언어 칩 */
+:root { --font: "IBM Plex Sans", "IBM Plex Sans KR", "IBM Plex Sans SC", sans-serif; }
+html[lang="zh-CN"] { --font: "IBM Plex Sans", "IBM Plex Sans SC", "IBM Plex Sans KR", sans-serif; }
+body, input, button, select, textarea, table { font-family: var(--font); }
+
+#langChip { position: fixed; top: 12px; right: 12px; z-index: 40; display: flex; gap: 2px; padding: 3px;
+  background: rgba(15, 21, 34, .88); border: 1px solid #2a3550; border-radius: 999px; }
+#langChip button { width: auto; margin: 0; padding: 5px 11px; border: 0; border-radius: 999px; background: transparent;
+  color: #9aa7c2; font-size: 13px; font-weight: 700; cursor: pointer; line-height: 1.2; }
+#langChip button:hover { background: #1f2840; color: #e8ecf4; }
+#langChip button[aria-pressed="true"] { background: #22c55e; color: #05210f; }

@@ -1,4 +1,4 @@
-// POST /api/admin — 관리자 작업
+// POST /api/admin — 관리자 작업 (오류는 code 로 돌려주고, 화면 문구는 브라우저에서 언어별로 표시)
 // 비밀번호(ADMIN_PASSWORD)는 서버에서만 확인하고, 실제 쓰기는 Firebase 비밀키(FIREBASE_DB_SECRET)로 수행합니다.
 // 보안 규칙상 settings, 전체 scores/food 삭제는 비밀키로만 가능합니다.
 const ACTIONS = {
@@ -33,17 +33,17 @@ function dbUrl(env, path) {
 
 export async function onRequestPost({ request, env }) {
   if (!env.ADMIN_PASSWORD || !env.FIREBASE_DB_SECRET || !env.FIREBASE_DATABASE_URL) {
-    return json({ ok: false, error: 'Cloudflare 환경변수(ADMIN_PASSWORD, FIREBASE_DB_SECRET, FIREBASE_DATABASE_URL)가 설정되지 않았습니다.' }, 500);
+    return json({ ok: false, code: 'env_missing' }, 500);
   }
   let body;
-  try { body = await request.json(); } catch (e) { return json({ ok: false, error: '잘못된 요청' }, 400); }
+  try { body = await request.json(); } catch (e) { return json({ ok: false, code: 'bad_request' }, 400); }
 
   if (!(await sameText(String(body.password || ''), String(env.ADMIN_PASSWORD)))) {
     await new Promise((r) => setTimeout(r, 700)); // 무작위 대입 속도 늦추기
-    return json({ ok: false, error: '비밀번호가 틀렸습니다.' }, 401);
+    return json({ ok: false, code: 'bad_password' }, 401);
   }
   const ops = ACTIONS[body.action];
-  if (!ops) return json({ ok: false, error: '알 수 없는 작업' }, 400);
+  if (!ops) return json({ ok: false, code: 'unknown_action' }, 400);
 
   for (const [path, method, value] of ops) {
     const res = await fetch(dbUrl(env, path), {
@@ -52,7 +52,7 @@ export async function onRequestPost({ request, env }) {
     });
     if (!res.ok) {
       const text = (await res.text()).slice(0, 200);
-      return json({ ok: false, error: `Firebase 오류 (${res.status}): ${text} — FIREBASE_DB_SECRET 을 확인하세요.` }, 502);
+      return json({ ok: false, code: 'firebase', detail: `${res.status} ${text}` }, 502);
     }
   }
   return json({ ok: true });

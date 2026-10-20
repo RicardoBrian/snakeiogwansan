@@ -2,19 +2,24 @@
 <html lang="ko">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
 <title>SNAKE.IO</title>
 <link rel="icon" href="data:,">
+<link rel="stylesheet" href="fonts/fonts.css">
+<link rel="stylesheet" href="common.css">
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
 <canvas id="game"></canvas>
 
 <div id="hud" class="hidden">
-  <div id="stats"><span id="scoreText">점수 0</span><span id="killText">처치 0</span><span id="onlineText">접속 0명</span><span id="boostText" class="on">⚡ 부스트 가능</span></div>
-  <div id="board"><h3>실시간 순위</h3><ol id="boardList"></ol></div>
+  <div id="stats"><span id="scoreText"></span><span id="killText"></span><span id="onlineText"></span><span id="boostText" class="on"></span></div>
+  <div id="board"><h3 data-i18n="board"></h3><ol id="boardList"></ol></div>
   <canvas id="minimap" width="150" height="150"></canvas>
-  <div id="help">마우스로 방향 · 클릭/스페이스바 = 부스트 · ←/→ 키로도 조종</div>
+  <div id="help"></div>
+  <button id="boostBtn" type="button" aria-label="Boost">⚡</button>
 </div>
 
 <div id="toast"></div>
@@ -22,36 +27,37 @@
 <div id="login" class="overlay">
   <div class="card">
     <h1>🐍 SNAKE.IO</h1>
-    <p class="sub">학번과 이름을 입력하고 입장하세요</p>
+    <p class="sub" data-i18n="subtitle"></p>
     <form id="loginForm" autocomplete="off">
-      <input id="sidInput" placeholder="학번 (예: 20315)" maxlength="12" inputmode="numeric" required>
-      <input id="nameInput" placeholder="이름" maxlength="10" required>
-      <button id="joinBtn" type="submit">입장하기</button>
+      <input id="sidInput" data-i18n-ph="sidPh" maxlength="12" inputmode="numeric" required>
+      <input id="nameInput" data-i18n-ph="namePh" maxlength="10" required>
+      <button id="joinBtn" type="submit" data-i18n="join"></button>
     </form>
     <p id="loginError" class="error"></p>
-    <p id="connText" class="muted">서버에 연결 중...</p>
+    <p id="connText" class="muted"></p>
     <div class="fame">
-      <h3>🏆 최고 기록 TOP 10</h3>
-      <ol id="fameList"><li class="muted">기록 없음</li></ol>
+      <h3 data-i18n="fameTitle"></h3>
+      <ol id="fameList"></ol>
     </div>
   </div>
 </div>
 
 <div id="dead" class="overlay hidden">
   <div class="card">
-    <h1 id="deadTitle">게임 오버</h1>
+    <h1 id="deadTitle"></h1>
     <p id="deadMsg" class="sub"></p>
     <div class="result">
-      <div><b id="deadScore">0</b><span>이번 판 최고</span></div>
-      <div><b id="deadKills">0</b><span>처치</span></div>
-      <div><b id="deadBest">-</b><span>내 최고</span></div>
+      <div><b id="deadScore">0</b><span data-i18n="peakLabel"></span></div>
+      <div><b id="deadKills">0</b><span data-i18n="killsLabel"></span></div>
+      <div><b id="deadBest">-</b><span data-i18n="bestLabel"></span></div>
     </div>
-    <button id="retryBtn">다시 하기</button>
-    <button id="homeBtn" class="ghost">처음으로</button>
+    <button id="retryBtn" data-i18n="retry"></button>
+    <button id="homeBtn" class="ghost" data-i18n="home"></button>
     <p id="deadError" class="error"></p>
   </div>
 </div>
 
+<script src="i18n.js"></script>
 <script src="lib/firebase-app-compat.js"></script>
 <script src="lib/firebase-database-compat.js"></script>
 <script src="api/config"></script>

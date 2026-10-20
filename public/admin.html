@@ -12,18 +12,19 @@
   body { margin: 0; background: #0b0f17; color: #e8ecf4; }
   .wrap { max-width: 1100px; margin: 0 auto; padding: 24px 16px; }
   .scroll { overflow-x: auto; }
-  h1 { padding-right: 200px; }
+  h1 { margin: 0 0 16px; padding-right: 200px; }
   @media (max-width: 600px) { h1 { padding-right: 0; margin-top: 36px; font-size: 24px; } }
-  h1 { margin: 0 0 16px; }
   h2 { margin: 0 0 10px; font-size: 18px; }
   .panel { background: #161d2b; border: 1px solid #2a3550; border-radius: 14px; padding: 18px; margin-bottom: 16px; }
   .row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
   .grid { display: grid; grid-template-columns: 1fr 1.6fr; gap: 16px; }
   @media (max-width: 800px) { .grid { grid-template-columns: 1fr; } }
   button { padding: 10px 16px; border: 0; border-radius: 9px; font-weight: bold; font-size: 15px; cursor: pointer; background: #334155; color: #fff; }
+  button:disabled { opacity: .45; cursor: default; }
   button.go { background: #22c55e; color: #05210f; }
   button.stop { background: #ef4444; }
   button.on { outline: 2px solid #fbbf24; }
+  button.small { padding: 6px 10px; font-size: 13px; }
   input { padding: 10px 12px; border-radius: 9px; border: 1px solid #33405e; background: #0f1522; color: #fff; font-size: 15px; }
   table { width: 100%; border-collapse: collapse; font-size: 15px; }
   th, td { padding: 7px 8px; border-bottom: 1px solid #253049; text-align: left; }
@@ -32,9 +33,22 @@
   tr.top1 td { color: #fbbf24; font-weight: bold; }
   tr.top2 td { color: #e5e7eb; font-weight: bold; }
   tr.top3 td { color: #d6a36a; font-weight: bold; }
+  tr.sel td { background: #1f2840; }
   #status { font-size: 18px; font-weight: bold; }
   .muted { color: #6f7c98; font-size: 13px; }
   .hidden { display: none !important; }
+
+  .tabs { display: flex; gap: 6px; margin-bottom: 16px; }
+  .tabs button { background: #161d2b; border: 1px solid #2a3550; color: #9aa7c2; }
+  .tabs button.active { background: #22c55e; color: #05210f; border-color: #22c55e; }
+  .form { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 12px; align-items: end; }
+  .form label { display: flex; flex-direction: column; gap: 6px; font-size: 13px; color: #9aa7c2; }
+  .form input { width: 100%; }
+  .detail-head { display: flex; flex-wrap: wrap; gap: 16px; align-items: center; margin-bottom: 14px; }
+  .big-code { font-size: 44px; font-weight: 700; letter-spacing: 8px; color: #fde047; line-height: 1; }
+  .phase { font-size: 18px; font-weight: 700; }
+  .timer { font-size: 28px; font-weight: 700; font-variant-numeric: tabular-nums; }
+  .error { color: #ff7676; }
 </style>
 </head>
 <body>
@@ -46,45 +60,118 @@
     <form id="gateForm" class="row">
       <input id="pw" type="password" data-i18n-ph="pwPh" autofocus>
       <button class="go" type="submit" data-i18n="signIn"></button>
-      <span id="gateErr" style="color:#ff7676"></span>
+      <span id="gateErr" class="error"></span>
     </form>
   </div>
 
   <div id="main" class="hidden">
-    <div class="panel">
-      <div class="row">
-        <span id="status" data-i18n="statusChecking"></span>
-        <span style="flex:1"></span>
-        <button id="openBtn" class="go" data-i18n="startRound"></button>
-        <button id="lockBtn" class="stop" data-i18n="endRound"></button>
-      </div>
-      <p class="muted" data-i18n="roundHint"></p>
+    <div class="tabs">
+      <button id="tabRoomBtn" class="active" data-i18n="tabRoom"></button>
+      <button id="tabPracticeBtn" data-i18n="tabPractice"></button>
     </div>
 
-    <div class="grid">
+    <!-- ===== 대회 관리 ===== -->
+    <div id="tabRoom">
       <div class="panel">
-        <h2><span data-i18n="livePlayers"></span> <span id="liveCount" class="muted"></span></h2>
-        <div class="scroll"><table><thead><tr><th>#</th><th data-i18n="colSid"></th><th data-i18n="colName"></th><th class="num" data-i18n="colScore"></th></tr></thead><tbody id="liveBody"></tbody></table></div>
+        <h2 data-i18n="createTitle"></h2>
+        <form id="createForm" class="form">
+          <label><span data-i18n="fName"></span><input id="fName" maxlength="30" required></label>
+          <label><span data-i18n="fRounds"></span><input id="fRounds" type="number" min="1" max="20" value="5" required></label>
+          <label><span data-i18n="fDuration"></span><input id="fDuration" type="number" min="0.5" max="30" step="0.5" value="3" required></label>
+          <label><span data-i18n="fPoints"></span><input id="fPoints" value="25,18,15,12,10,8,6,4,2,1" required></label>
+          <label><span data-i18n="fKillBonus"></span><input id="fKillBonus" type="number" min="0" max="10" value="0" required></label>
+          <button class="go" type="submit" data-i18n="createBtn"></button>
+        </form>
+        <p class="muted" data-i18n="pointsHint"></p>
       </div>
+
       <div class="panel">
-        <div class="row" style="margin-bottom:10px">
-          <h2 style="margin:0" data-i18n="ranking"></h2>
-          <span style="flex:1"></span>
-          <button id="sortBest" class="on" data-i18n="sortBest"></button>
-          <button id="sortKills" data-i18n="sortKills"></button>
-          <button id="csvBtn" data-i18n="csv"></button>
+        <h2 data-i18n="roomList"></h2>
+        <div class="scroll"><table>
+          <thead><tr><th data-i18n="colCode"></th><th data-i18n="colGameName"></th><th class="num" data-i18n="colRounds"></th><th data-i18n="colCreated"></th><th></th></tr></thead>
+          <tbody id="roomBody"></tbody>
+        </table></div>
+        <p id="noRooms" class="muted" data-i18n="noRooms"></p>
+      </div>
+
+      <div id="detail" class="panel hidden">
+        <div class="detail-head">
+          <div>
+            <div class="muted" data-i18n="joinCode"></div>
+            <div id="dCode" class="big-code"></div>
+          </div>
+          <div style="flex:1; min-width: 200px">
+            <div id="dName" style="font-size:20px;font-weight:700"></div>
+            <div id="dPhase" class="phase"></div>
+            <div id="dInfo" class="muted"></div>
+          </div>
+          <div id="dTimer" class="timer"></div>
         </div>
-        <div class="scroll"><table><thead><tr><th data-i18n="colRank"></th><th data-i18n="colSid"></th><th data-i18n="colName"></th><th class="num" data-i18n="colBest"></th><th class="num" data-i18n="colKills"></th><th class="num" data-i18n="colGames"></th></tr></thead><tbody id="rankBody"></tbody></table></div>
+        <div class="row">
+          <button id="startRoundBtn" class="go"></button>
+          <button id="endNowBtn" class="stop" data-i18n="endNow"></button>
+          <button id="finishBtn" class="hidden" data-i18n="finishNow"></button>
+          <button id="boardBtn" data-i18n="openBoard"></button>
+          <button id="roomCsvBtn" data-i18n="csv"></button>
+        </div>
+        <p class="muted" data-i18n="autoHint"></p>
+
+        <div class="grid" style="margin-top:12px">
+          <div>
+            <h2 id="liveTitle"></h2>
+            <div class="scroll"><table>
+              <thead><tr><th>#</th><th data-i18n="colSid"></th><th data-i18n="colName"></th><th class="num" data-i18n="colBest"></th><th class="num" data-i18n="colKills"></th></tr></thead>
+              <tbody id="liveRoundBody"></tbody>
+            </table></div>
+          </div>
+          <div>
+            <h2 data-i18n="standings"></h2>
+            <div class="scroll"><table>
+              <thead id="standHead"></thead>
+              <tbody id="standBody"></tbody>
+            </table></div>
+          </div>
+        </div>
       </div>
     </div>
 
-    <div class="panel">
-      <h2 data-i18n="manage"></h2>
-      <div class="row">
-        <button id="clearFood" data-i18n="clearFood"></button>
-        <button id="clearScores" class="stop" data-i18n="resetScores"></button>
+    <!-- ===== 연습 모드 ===== -->
+    <div id="tabPractice" class="hidden">
+      <div class="panel">
+        <div class="row">
+          <span id="status" data-i18n="statusChecking"></span>
+          <span style="flex:1"></span>
+          <button id="openBtn" class="go" data-i18n="startRound"></button>
+          <button id="lockBtn" class="stop" data-i18n="endRound"></button>
+        </div>
+        <p class="muted" data-i18n="roundHint"></p>
       </div>
-      <p class="muted" data-i18n="resetHint"></p>
+
+      <div class="grid">
+        <div class="panel">
+          <h2><span data-i18n="livePlayers"></span> <span id="liveCount" class="muted"></span></h2>
+          <div class="scroll"><table><thead><tr><th>#</th><th data-i18n="colSid"></th><th data-i18n="colName"></th><th class="num" data-i18n="colScore"></th></tr></thead><tbody id="liveBody"></tbody></table></div>
+        </div>
+        <div class="panel">
+          <div class="row" style="margin-bottom:10px">
+            <h2 style="margin:0" data-i18n="ranking"></h2>
+            <span style="flex:1"></span>
+            <button id="sortBest" class="on" data-i18n="sortBest"></button>
+            <button id="sortKills" data-i18n="sortKills"></button>
+            <button id="csvBtn" data-i18n="csv"></button>
+          </div>
+          <div class="scroll"><table><thead><tr><th data-i18n="colRank"></th><th data-i18n="colSid"></th><th data-i18n="colName"></th><th class="num" data-i18n="colBest"></th><th class="num" data-i18n="colKills"></th><th class="num" data-i18n="colGames"></th></tr></thead><tbody id="rankBody"></tbody></table></div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <h2 data-i18n="manage"></h2>
+        <div class="row">
+          <button id="clearFood" data-i18n="clearFood"></button>
+          <button id="clearScores" class="stop" data-i18n="resetScores"></button>
+        </div>
+        <p class="muted" data-i18n="resetHint"></p>
+      </div>
     </div>
   </div>
 </div>

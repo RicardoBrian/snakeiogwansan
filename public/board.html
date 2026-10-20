@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SNAKE.IO Board</title>
+<link rel="icon" href="data:,">
+<link rel="stylesheet" href="fonts/fonts.css">
+<link rel="stylesheet" href="common.css">
+<style>
+  * { box-sizing: border-box; }
+  html, body { margin: 0; min-height: 100%; background: #0b0f17; color: #e8ecf4; }
+  .wrap { max-width: 1400px; margin: 0 auto; padding: 28px 24px; }
+  .top { display: flex; flex-wrap: wrap; gap: 24px; align-items: center; margin-bottom: 24px; padding-right: 200px; }
+  .codebox { background: #161d2b; border: 1px solid #2a3550; border-radius: 18px; padding: 14px 24px; text-align: center; }
+  .codebox .label { color: #9aa7c2; font-size: 16px; }
+  .codebox .code { font-size: 72px; font-weight: 700; letter-spacing: 12px; color: #fde047; line-height: 1.05; }
+  .codebox .url { color: #9aa7c2; font-size: 15px; }
+  .title { flex: 1; min-width: 260px; }
+  .title h1 { margin: 0; font-size: 36px; }
+  .title .phase { font-size: 26px; font-weight: 700; color: #4ade80; margin-top: 6px; }
+  .title .sub { color: #9aa7c2; font-size: 18px; margin-top: 4px; }
+  .timer { font-size: 96px; font-weight: 700; font-variant-numeric: tabular-nums; line-height: 1; }
+  .timer.low { color: #f87171; }
+  .cols { display: grid; grid-template-columns: repeat(auto-fit, minmax(380px, 1fr)); gap: 20px; }
+  .panel { background: #161d2b; border: 1px solid #2a3550; border-radius: 16px; padding: 18px 20px; }
+  .panel h2 { margin: 0 0 10px; font-size: 22px; color: #fbbf24; }
+  table { width: 100%; border-collapse: collapse; font-size: 22px; }
+  th, td { padding: 8px 10px; border-bottom: 1px solid #253049; text-align: left; }
+  th { color: #9aa7c2; font-weight: normal; font-size: 16px; }
+  .num { text-align: right; font-variant-numeric: tabular-nums; }
+  tr.top1 td { color: #fbbf24; font-weight: 700; }
+  tr.top2 td { color: #e5e7eb; font-weight: 700; }
+  tr.top3 td { color: #d6a36a; font-weight: 700; }
+  .podium { display: flex; justify-content: center; align-items: flex-end; gap: 18px; margin: 10px 0 24px; }
+  .podium > div { width: 220px; text-align: center; border-radius: 14px 14px 0 0; padding: 14px 10px; background: #1f2840; }
+  .podium .p1 { height: 220px; background: linear-gradient(#a16207, #713f12); }
+  .podium .p2 { height: 170px; background: linear-gradient(#64748b, #334155); }
+  .podium .p3 { height: 140px; background: linear-gradient(#9a3412, #7c2d12); }
+  .podium b { display: block; font-size: 44px; }
+  .podium .n { font-size: 26px; font-weight: 700; }
+  .podium .s { font-size: 18px; opacity: .85; }
+  .big-msg { font-size: 30px; text-align: center; color: #9aa7c2; padding: 40px 0; }
+  .hidden { display: none !important; }
+  form { display: flex; gap: 10px; justify-content: center; margin-top: 80px; }
+  input { padding: 14px; font-size: 28px; width: 200px; text-align: center; border-radius: 12px; border: 1px solid #33405e; background: #0f1522; color: #fff; letter-spacing: 6px; }
+  button { padding: 14px 24px; font-size: 22px; font-weight: 700; border: 0; border-radius: 12px; background: #22c55e; color: #05210f; cursor: pointer; }
+  @media (max-width: 700px) { .top { padding-right: 0; margin-top: 40px; } .codebox .code { font-size: 48px; } .timer { font-size: 60px; } table { font-size: 17px; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <form id="pick" class="hidden"><input id="pickCode" maxlength="4" inputmode="numeric" placeholder="0000"><button type="submit" data-i18n="boardOpen"></button></form>
+
+  <div id="view" class="hidden">
+    <div class="top">
+      <div class="codebox">
+        <div class="label" data-i18n="joinCode"></div>
+        <div id="code" class="code"></div>
+        <div id="url" class="url"></div>
+      </div>
+      <div class="title">
+        <h1 id="name"></h1>
+        <div id="phase" class="phase"></div>
+        <div id="sub" class="sub"></div>
+      </div>
+      <div id="timer" class="timer"></div>
+    </div>
+
+    <div id="podium" class="podium hidden"></div>
+    <div id="msg" class="big-msg hidden"></div>
+
+    <div class="cols">
+      <div id="leftBox" class="panel hidden"><h2 id="leftTitle"></h2><table id="leftTable"></table></div>
+      <div id="rightBox" class="panel hidden"><h2 data-i18n="standings"></h2><table id="rightTable"></table></div>
+    </div>
+  </div>
+</div>
+
+<script src="i18n.js"></script>
+<script src="lib/firebase-app-compat.js"></script>
+<script src="lib/firebase-database-compat.js"></script>
+<script src="api/config"></script>
+<script src="board.js"></script>
+</body>
+</html>

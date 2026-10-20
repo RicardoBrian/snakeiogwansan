@@ -15,7 +15,7 @@
 <canvas id="game"></canvas>
 
 <div id="hud" class="hidden">
-  <div id="stats"><span id="scoreText"></span><span id="killText"></span><span id="onlineText"></span><span id="boostText" class="on"></span></div>
+  <div id="stats"><span id="roundText" class="hidden"></span><span id="scoreText"></span><span id="killText"></span><span id="onlineText"></span><span id="boostText" class="on"></span></div>
   <div id="board"><h3 data-i18n="board"></h3><ol id="boardList"></ol></div>
   <canvas id="minimap" width="150" height="150"></canvas>
   <div id="help"></div>
@@ -29,9 +29,11 @@
     <h1>🐍 SNAKE.IO</h1>
     <p class="sub" data-i18n="subtitle"></p>
     <form id="loginForm" autocomplete="off">
-      <input id="sidInput" data-i18n-ph="sidPh" maxlength="12" inputmode="numeric" required>
-      <input id="nameInput" data-i18n-ph="namePh" maxlength="10" required>
-      <button id="joinBtn" type="submit" data-i18n="join"></button>
+      <input id="codeInput" data-i18n-ph="codePh" maxlength="4" inputmode="numeric" class="code-input">
+      <input id="sidInput" data-i18n-ph="sidPh" maxlength="12" inputmode="numeric">
+      <input id="nameInput" data-i18n-ph="namePh" maxlength="10">
+      <button id="joinBtn" type="submit" data-i18n="joinRoom"></button>
+      <button id="practiceBtn" type="button" class="ghost" data-i18n="practice"></button>
     </form>
     <p id="loginError" class="error"></p>
     <p id="connText" class="muted"></p>
@@ -49,13 +51,33 @@
     <div class="result">
       <div><b id="deadScore">0</b><span data-i18n="peakLabel"></span></div>
       <div><b id="deadKills">0</b><span data-i18n="killsLabel"></span></div>
-      <div><b id="deadBest">-</b><span data-i18n="bestLabel"></span></div>
+      <div><b id="deadBest">-</b><span id="deadBestLabel" data-i18n="bestLabel"></span></div>
     </div>
     <button id="retryBtn" data-i18n="retry"></button>
     <button id="homeBtn" class="ghost" data-i18n="home"></button>
     <p id="deadError" class="error"></p>
   </div>
 </div>
+
+<div id="roomPanel" class="overlay hidden">
+  <div class="card wide">
+    <div class="room-head"><span id="rpName"></span><span id="rpCode" class="code-chip"></span></div>
+    <h1 id="rpTitle"></h1>
+    <p id="rpSub" class="sub"></p>
+    <div id="rpMine" class="result hidden">
+      <div><b id="rpMyRank">-</b><span data-i18n="roundRank"></span></div>
+      <div><b id="rpMyPts">-</b><span data-i18n="ptsEarned"></span></div>
+      <div><b id="rpMyTotal">-</b><span data-i18n="totalPts"></span></div>
+    </div>
+    <div class="tables">
+      <div id="rpRoundBox" class="hidden"><h3 id="rpRoundTitle"></h3><table id="rpRound"></table></div>
+      <div id="rpTotalBox" class="hidden"><h3 data-i18n="standings"></h3><table id="rpTotal"></table></div>
+    </div>
+    <button id="leaveBtn" class="ghost" data-i18n="leaveRoom"></button>
+  </div>
+</div>
+
+<div id="countdown" class="hidden"><div id="countdownSub"></div><div id="countdownNum"></div></div>
 
 <script src="i18n.js"></script>
 <script src="lib/firebase-app-compat.js"></script>

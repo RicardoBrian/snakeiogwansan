@@ -60,6 +60,26 @@ button.ghost:hover { background: #1f2840; }
 body.touch #boostBtn { display: block; }
 body.touch #help { left: 120px; bottom: 16px; }
 
+/* 대회: 게임방 화면 */
+.code-input { text-align: center; font-size: 22px; font-weight: 700; letter-spacing: 6px; }
+.card.wide { max-width: 640px; }
+.room-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-bottom: 12px;
+  color: #9aa7c2; font-size: 14px; text-align: left; }
+.code-chip { background: #0f1522; border: 1px solid #33405e; border-radius: 999px; padding: 4px 12px; color: #fde047;
+  font-weight: 700; white-space: nowrap; }
+.tables { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 14px; margin-bottom: 8px; text-align: left; }
+.tables h3 { margin: 0 0 6px; font-size: 14px; color: #fbbf24; }
+.tables table { width: 100%; border-collapse: collapse; font-size: 14px; }
+.tables th, .tables td { padding: 5px 6px; border-bottom: 1px solid #253049; }
+.tables th { color: #9aa7c2; font-weight: normal; text-align: left; }
+.tables .num { text-align: right; font-variant-numeric: tabular-nums; }
+.tables tr.me td { color: #4ade80; font-weight: 700; }
+#countdown { position: fixed; inset: 0; z-index: 12; display: flex; flex-direction: column; align-items: center;
+  justify-content: center; pointer-events: none; background: rgba(5, 8, 14, .35); }
+#countdownSub { font-size: 22px; font-weight: 700; color: #fbbf24; }
+#countdownNum { font-size: 160px; font-weight: 700; line-height: 1; color: #fff; text-shadow: 0 6px 30px rgba(0,0,0,.6); }
+#roundText { color: #fbbf24; }
+
 #toast { position: fixed; top: 60px; left: 50%; transform: translateX(-50%); z-index: 20; pointer-events: none;
   background: rgba(34, 197, 94, .92); color: #05210f; font-weight: bold; padding: 10px 18px; border-radius: 10px;
   opacity: 0; transition: opacity .25s; max-width: calc(100% - 32px); text-align: center; }

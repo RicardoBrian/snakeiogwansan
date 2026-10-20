@@ -41,14 +41,16 @@
     showNoConfig();
     addEventListener('langchange', showNoConfig);
     $('joinBtn').disabled = true;
+    $('practiceBtn').disabled = true;
     return;
   }
   firebase.initializeApp(cfg);
   const db = firebase.database();
   if (new URLSearchParams(location.search).has('emu')) db.useEmulator('127.0.0.1', 9000);
   const SV = firebase.database.ServerValue;
-  const playersRef = db.ref('players');
-  const foodRef = db.ref('food');
+  // 연습 모드는 DB 최상위, 대회는 rooms/{코드}/ 아래에 같은 구조(players, food, notices)를 씀
+  let base = '';
+  let playersRef = null, foodRef = null;
 
   let serverOffset = 0;
   const now = () => Date.now() + serverOffset;
@@ -66,7 +68,7 @@
       $('deadMsg').textContent = t(deadMsg.key, deadMsg.params);
     }
   }
-  addEventListener('langchange', () => { renderTexts(); renderFame(); updateHud(); });
+  addEventListener('langchange', () => { renderTexts(); renderFame(); updateHud(); renderRoom(); });
 
   let connected = false;
   db.ref('.info/connected').on('value', (s) => {
@@ -78,11 +80,11 @@
   db.ref('settings/locked').on('value', (s) => {
     locked = !!s.val();
     updateLockText();
-    if (locked && me && me.alive) endGame('roundOver', 'roundEnded', null, null, false);
+    if (locked && !room && me && me.alive) endGame('roundOver', 'roundEnded', null, null, false);
   });
+  // 잠금은 연습 모드에만 적용 (대회는 게임방 라운드로 진행)
   function updateLockText() {
-    if (locked) setLoginError('locked');
-    else if (loginMsg && loginMsg.key === 'locked') setLoginError(null);
+    if (!locked && loginMsg && loginMsg.key === 'locked') setLoginError(null);
   }
   renderTexts();
 
@@ -158,14 +160,27 @@
     return out;
   }
 
+  // ---------- 월드 연결 (연습 ↔ 게임방) ----------
+  function attachWorld(newBase) {
+    if (playersRef) { playersRef.off(); foodRef.off(); }
+    base = newBase;
+    remotes.clear();
+    foods.clear();
+    playersRef = db.ref(base + 'players');
+    foodRef = db.ref(base + 'food');
+    foodRef.on('child_added', (s) => {
+      const v = s.val();
+      if (!v || typeof v.x !== 'number') return;
+      const val = +v.v || 1;
+      foods.set(s.key, { x: v.x, y: v.y, v: val, h: +v.h || 0, r: foodRadius(val), pending: false });
+    });
+    foodRef.on('child_removed', (s) => { foods.delete(s.key); });
+    playersRef.on('child_added', onPlayer);
+    playersRef.on('child_changed', onPlayer);
+    playersRef.on('child_removed', (s) => { remotes.delete(s.key); });
+  }
+
   // ---------- 먹이 ----------
-  foodRef.on('child_added', (s) => {
-    const v = s.val();
-    if (!v || typeof v.x !== 'number') return;
-    const val = +v.v || 1;
-    foods.set(s.key, { x: v.x, y: v.y, v: val, h: +v.h || 0, r: foodRadius(val), pending: false });
-  });
-  foodRef.on('child_removed', (s) => { foods.delete(s.key); });
 
   function spawnFood(list) {
     if (!list.length) return;
@@ -180,7 +195,7 @@
   }
   function eat(id, f) {
     f.pending = true;
-    db.ref('food/' + id).transaction(
+    foodRef.child(id).transaction(
       (cur) => (cur === null ? undefined : null),
       (err, committed) => {
         if (!err && committed && me && me.alive) me.mass += f.v;
@@ -228,9 +243,7 @@
     r.snaps.push(snap);
     if (r.snaps.length > 20) r.snaps.shift();
   }
-  playersRef.on('child_added', onPlayer);
-  playersRef.on('child_changed', onPlayer);
-  playersRef.on('child_removed', (s) => { remotes.delete(s.key); });
+  attachWorld('');
 
   function updateRemote(r, t, dt) {
     const S = r.snaps, last = S[S.length - 1];
@@ -267,7 +280,8 @@
 
   // ---------- 내 뱀 ----------
   function spawn() {
-    if (locked) { deadErr = 'lockedShort'; renderTexts(); return false; }
+    if (room) { if (!roundLive()) return false; }
+    else if (locked) { deadErr = 'lockedShort'; renderTexts(); return false; }
     let x = WORLD / 2, y = WORLD / 2;
     for (let tries = 0; tries < 30; tries++) {
       x = rand(400, WORLD - 400); y = rand(400, WORLD - 400);
@@ -282,7 +296,7 @@
       peak: START_MASS, savedPeak: 0 };
     prefill(me);
     remotes.delete(me.sid);
-    db.ref('players/' + me.sid).onDisconnect().remove();
+    playersRef.child(me.sid).onDisconnect().remove();
     listenNotices();
     cam.x = me.x; cam.y = me.y;
     sendAcc = SEND_INTERVAL; boostDropAcc = 0; hostAcc = 0; saveAcc = 0;
@@ -290,6 +304,7 @@
     $('login').classList.add('hidden');
     $('dead').classList.add('hidden');
     $('hud').classList.remove('hidden');
+    if (room) roomView = null;
     deadErr = null;
     renderTexts();
     sendState();
@@ -298,7 +313,7 @@
 
   function sendState() {
     if (!me || !me.alive) return;
-    db.ref('players/' + me.sid).set({
+    playersRef.child(me.sid).set({
       n: me.name, x: Math.round(me.x), y: Math.round(me.y), a: Math.round(angDiff(me.a, 0) * 100) / 100,
       m: Math.round(me.mass * 10) / 10, b: me.b ? 1 : 0, h: me.hue, t: now()
     });
@@ -356,12 +371,12 @@
     clearTimeout(hiddenTimer);
     const score = Math.floor(me.peak);
     const upd = {};
-    upd['players/' + me.sid] = null;
+    upd[base + 'players/' + me.sid] = null;
     if (dropFood) {
       const count = clamp(Math.floor(me.mass / 3), 3, 60), val = Math.max(0.5, (me.mass * 0.6) / count);
       for (let i = 0; i < count; i++) {
         const p = me.pts[Math.floor((i / count) * me.pts.length)];
-        upd['food/' + foodRef.push().key] = {
+        upd[base + 'food/' + foodRef.push().key] = {
           x: Math.round(clamp(p.x + rand(-10, 10), 20, WORLD - 20)), y: Math.round(clamp(p.y + rand(-10, 10), 20, WORLD - 20)),
           v: Math.round(val * 10) / 10, h: me.hue
         };
@@ -375,13 +390,23 @@
     renderTexts();
     $('deadScore').textContent = score;
     $('deadKills').textContent = me.kills;
-    $('deadBest').textContent = '...';
     $('hud').classList.add('hidden');
-    $('dead').classList.remove('hidden');
+    const label = $('deadBestLabel');
+    label.dataset.i18n = room ? 'roundBestLabel' : 'bestLabel';
+    label.textContent = t(label.dataset.i18n);
+    $('homeBtn').classList.toggle('hidden', !!room);
+    if (room) {
+      $('deadBest').textContent = room.myBest;
+      roomView = null; // 다음 프레임에 화면 다시 결정 (부활 대기 / 라운드 결과)
+    } else {
+      $('deadBest').textContent = '...';
+      $('dead').classList.remove('hidden');
+    }
   }
 
   // 게임 중에도 주기적으로 최고 점수 저장 (창을 닫거나 새로고침해도 기록이 남도록)
   function savePeak() {
+    if (room) return saveRoundBest(null);
     const score = Math.floor(me.peak);
     if (score <= me.savedPeak) return;
     me.savedPeak = score;
@@ -391,6 +416,7 @@
   }
 
   function recordScore(score, killer) {
+    if (room) return saveRoundBest(killer);
     const sref = db.ref('scores/' + me.sid);
     sref.update({ sid: me.sid, name: me.name, last: score, games: SV.increment(1), ts: SV.TIMESTAMP });
     sref.child('best').transaction((cur) => Math.max(+cur || 0, score), (err, committed, snap) => {
@@ -403,10 +429,11 @@
   }
 
   function listenNotices() {
-    if (noticeSid === me.sid) return;
-    if (noticeSid) db.ref('notices/' + noticeSid).off();
-    noticeSid = me.sid;
-    const ref = db.ref('notices/' + noticeSid);
+    const path = base + 'notices/' + me.sid;
+    if (noticeSid === path) return;
+    if (noticeSid) db.ref(noticeSid).off();
+    noticeSid = path;
+    const ref = db.ref(path);
     ref.remove().then(() => {
       ref.on('child_added', (s) => {
         const v = s.val() || {};
@@ -428,41 +455,260 @@
     toastTimer = setTimeout(() => el.classList.remove('show'), 2200);
   }
 
+  // ---------- 대회 (게임방) ----------
+  // room.state.phase: lobby(대기) → round(카운트다운·진행) → results(라운드 결과) → … → finished(최종)
+  let room = null;
+  let roomView = null; // 현재 보여주는 화면: play | dead | countdown | panel
+  function roundLive() {
+    const st = room && room.state;
+    return !!st && st.phase === 'round' && now() >= st.startAt && now() < st.endAt;
+  }
+
+  async function joinRoom(code, sid, name) {
+    const meta = (await db.ref(`rooms/${code}/meta`).get()).val();
+    if (!meta) { setLoginError('errRoom'); return; }
+    const pres = (await db.ref(`rooms/${code}/presence/${sid}`).get()).val();
+    if (pres && now() - (+pres.t || 0) < 25000) { setLoginError('errDup'); return; }
+    profile = { sid, name };
+    me = null;
+    room = { code, meta, state: null, standings: {}, results: {}, memberCount: 0,
+      myBest: 0, savedBest: 0, bestKey: null, spawnedKey: null, refs: [] };
+    attachWorld(`rooms/${code}/`);
+    db.ref(`rooms/${code}/members/${sid}`).set({ name });
+    const presRef = db.ref(`rooms/${code}/presence/${sid}`);
+    presRef.onDisconnect().remove();
+    presRef.set({ t: SV.TIMESTAMP });
+    room.presRef = presRef;
+    room.presTimer = setInterval(() => presRef.set({ t: SV.TIMESTAMP }), 10000);
+    const R = (p) => { const ref = db.ref(`rooms/${code}/${p}`); room.refs.push(ref); return ref; };
+    const cur = room;
+    R('meta').on('value', (snap) => {
+      if (room !== cur) return;
+      if (!snap.val()) { leaveRoom(true); setLoginError('errRoomGone'); return; }
+      room.meta = snap.val();
+      renderRoom();
+    });
+    R('state').on('value', (snap) => {
+      if (room !== cur || !snap.val()) return;
+      room.state = snap.val();
+      if (room.state.roundKey && room.bestKey !== room.state.roundKey) {
+        room.bestKey = room.state.roundKey; room.myBest = 0; room.savedBest = 0;
+      }
+      roomView = null;
+      renderRoom();
+    });
+    R('standings').on('value', (snap) => { if (room === cur) { room.standings = snap.val() || {}; renderRoom(); } });
+    R('roundResults').on('value', (snap) => { if (room === cur) { room.results = snap.val() || {}; renderRoom(); } });
+    R('members').on('value', (snap) => { if (room === cur) { room.memberCount = snap.numChildren(); renderRoom(); } });
+    setLoginError(null);
+    $('login').classList.add('hidden');
+    renderRoom();
+  }
+
+  function leaveRoom(roomGone) {
+    if (!room) return;
+    clearInterval(room.presTimer);
+    room.refs.forEach((r) => r.off());
+    room.presRef.onDisconnect().cancel();
+    if (!roomGone) {
+      if (me && me.alive) playersRef.child(me.sid).remove();
+      room.presRef.remove();
+    }
+    if (me) me.alive = false;
+    room = null;
+    me = null;
+    roomView = null;
+    attachWorld('');
+    for (const id of ['hud', 'dead', 'roomPanel', 'countdown']) $(id).classList.add('hidden');
+    $('login').classList.remove('hidden');
+  }
+
+  // 대회 점수: 라운드별 최고점(여러 번 부활해도 가장 큰 값) + 처치
+  function saveRoundBest(killer) {
+    const st = room.state;
+    if (!st || st.phase !== 'round' || now() > st.endAt + 8000) return;
+    const rk = st.roundKey, code = room.code;
+    if (me) room.myBest = Math.max(room.myBest, Math.floor(me.peak));
+    if (room.myBest > room.savedBest) {
+      const best = room.savedBest = room.myBest;
+      const ref = db.ref(`rooms/${code}/roundScores/${rk}/${profile.sid}`);
+      ref.update({ name: profile.name });
+      ref.child('best').transaction((cur) => Math.max(+cur || 0, best));
+    }
+    if (killer) {
+      db.ref(`rooms/${code}/roundScores/${rk}/${killer.sid}`).update({ name: killer.name, kills: SV.increment(1) });
+      db.ref(`${base}notices/${killer.sid}`).push({ by: profile.name });
+    }
+  }
+
+  const fmtTime = (ms) => {
+    const sec = Math.max(0, Math.ceil(ms / 1000));
+    return `${Math.floor(sec / 60)}:${String(sec % 60).padStart(2, '0')}`;
+  };
+
+  // 매 프레임: 라운드 시작/종료에 맞춰 내 뱀과 화면 전환
+  function roomTick() {
+    if (!room || !room.state) return;
+    const st = room.state, tt = now();
+    if (st.phase === 'round') {
+      if (tt >= st.startAt && tt < st.endAt) {
+        if (room.spawnedKey !== st.roundKey && !(me && me.alive)) { room.spawnedKey = st.roundKey; spawn(); }
+      } else if (tt >= st.endAt && me && me.alive) {
+        endGame('roundOver', 'roundTimeUp', null, null, false);
+      }
+    } else if (me && me.alive) {
+      endGame('roundOver', 'roundEnded', null, null, false);
+    }
+
+    let view;
+    if (me && me.alive) view = 'play';
+    else if (roundLive()) view = 'dead';
+    else if (st.phase === 'round' && tt < st.startAt) view = 'countdown';
+    else view = 'panel';
+    if (view !== roomView) {
+      roomView = view;
+      $('hud').classList.toggle('hidden', view !== 'play');
+      $('dead').classList.toggle('hidden', view !== 'dead');
+      $('countdown').classList.toggle('hidden', view !== 'countdown');
+      $('roomPanel').classList.toggle('hidden', view !== 'panel');
+      renderRoom();
+    }
+    if (view === 'countdown') {
+      const n = String(Math.max(1, Math.ceil((st.startAt - tt) / 1000)));
+      if ($('countdownNum').textContent !== n) $('countdownNum').textContent = n;
+    }
+    if (view === 'panel' && st.phase === 'round' && !room.tallyShown) { room.tallyShown = true; renderRoom(); }
+    if (st.phase !== 'round') room.tallyShown = false;
+  }
+
+  // 동점이면 F1처럼 더 높은 라운드 성적(승점이 큰 라운드)이 많은 쪽이 앞
+  function cmpStanding(a, b) {
+    if (b.total !== a.total) return b.total - a.total;
+    const pa = Object.values(a.r).sort((x, y) => y - x), pb = Object.values(b.r).sort((x, y) => y - x);
+    for (let i = 0; i < Math.max(pa.length, pb.length); i++) if ((pb[i] || 0) !== (pa[i] || 0)) return (pb[i] || 0) - (pa[i] || 0);
+    return a.name < b.name ? -1 : 1;
+  }
+  function sortedStandings() {
+    return Object.entries(room.standings || {})
+      .map(([sid, v]) => ({ sid, name: (v && v.name) || sid, total: +(v && v.total) || 0, r: (v && v.r) || {} }))
+      .sort(cmpStanding);
+  }
+
+  function fillTable(id, head, rows, mineIdx) {
+    const tb = $(id);
+    tb.innerHTML = '';
+    const tr = document.createElement('tr');
+    head.forEach((h, j) => { const th = document.createElement('th'); th.textContent = h; if (j >= 2) th.className = 'num'; tr.appendChild(th); });
+    tb.appendChild(tr);
+    rows.forEach((r, i) => {
+      const row = document.createElement('tr');
+      if (i === mineIdx) row.className = 'me';
+      r.forEach((c, j) => { const td = document.createElement('td'); td.textContent = c; if (j >= 2) td.className = 'num'; row.appendChild(td); });
+      tb.appendChild(row);
+    });
+  }
+
+  function renderRoom() {
+    if (!room) return;
+    const meta = room.meta || {}, st = room.state || { phase: 'lobby', round: 0 };
+    const total = meta.rounds || 0;
+    $('rpName').textContent = meta.name || '';
+    $('rpCode').textContent = t('codeLabel', { code: room.code });
+    $('countdownSub').textContent = t('roundOf', { r: st.round, n: total });
+
+    const rk = st.roundKey;
+    const results = (rk && room.results[rk]) ? Object.values(room.results[rk]) : [];
+    const stand = sortedStandings();
+    const myRes = results.find((e) => e.sid === profile.sid);
+    const myStandIdx = stand.findIndex((e) => e.sid === profile.sid);
+    const myStand = stand[myStandIdx];
+
+    let title, sub;
+    if (st.phase === 'lobby') {
+      title = t('waitTitle');
+      sub = t('waitSub', { n: room.memberCount, rounds: total });
+    } else if (st.phase === 'round') {
+      title = t('tallying');
+      sub = t('roundOf', { r: st.round, n: total });
+    } else if (st.phase === 'results') {
+      title = t('roundResultTitle', { r: st.round });
+      sub = t('nextWait', { r: st.round, n: total });
+    } else {
+      title = t('finalTitle');
+      sub = myStand ? t('myFinal', { rank: t('rankN', { n: myStandIdx + 1 }), pts: myStand.total }) : t('thanks');
+    }
+    $('rpTitle').textContent = title;
+    $('rpSub').textContent = sub;
+
+    const showMine = st.phase === 'results' || st.phase === 'finished';
+    $('rpMine').classList.toggle('hidden', !showMine);
+    if (showMine) {
+      $('rpMyRank').textContent = myRes ? t('rankN', { n: myRes.rank }) : '-';
+      $('rpMyPts').textContent = myRes ? '+' + myRes.pts : '+0';
+      $('rpMyTotal').textContent = myStand ? myStand.total : 0;
+    }
+
+    $('rpRoundBox').classList.toggle('hidden', !showMine || !results.length);
+    if (showMine && results.length) {
+      $('rpRoundTitle').textContent = t('roundResultTitle', { r: st.round });
+      const top = results.slice(0, 10);
+      fillTable('rpRound', ['#', t('colName'), t('colBest'), t('colPts')],
+        top.map((e) => [e.rank, e.name, e.best, '+' + e.pts]), top.findIndex((e) => e.sid === profile.sid));
+    }
+    const showStand = st.round > 0 && stand.length > 0 && st.phase !== 'round';
+    $('rpTotalBox').classList.toggle('hidden', !showStand);
+    if (showStand) {
+      const rows = stand.slice(0, 10).map((e, i) => [i + 1, e.name, e.total]);
+      let mine = myStandIdx < 10 ? myStandIdx : -1;
+      if (myStandIdx >= 10) { rows.push([myStandIdx + 1, myStand.name, myStand.total]); mine = rows.length - 1; }
+      fillTable('rpTotal', ['#', t('colName'), t('colTotal')], rows, mine);
+    }
+  }
+
   // ---------- 로그인 ----------
   try {
     $('sidInput').value = localStorage.getItem('snake_sid') || '';
     $('nameInput').value = localStorage.getItem('snake_name') || '';
+    $('codeInput').value = new URLSearchParams(location.search).get('room') || localStorage.getItem('snake_code') || '';
   } catch (e) { /* 저장소 사용 불가 */ }
 
-  $('loginForm').addEventListener('submit', async (e) => {
-    e.preventDefault();
+  async function enter(mode) {
     const sid = $('sidInput').value.trim();
     const name = $('nameInput').value.trim();
+    const code = $('codeInput').value.trim();
+    if (mode === 'room' && !/^[0-9]{4}$/.test(code)) { setLoginError('errCode'); return; }
     if (!/^[0-9A-Za-z]{1,12}$/.test(sid)) { setLoginError('errSid'); return; }
     if (!name || name.length > 10) { setLoginError('errName'); return; }
     if (!connected) { setLoginError('errConnecting'); return; }
-    if (locked) { updateLockText(); return; }
-    $('joinBtn').disabled = true;
+    if (mode === 'practice' && locked) { setLoginError('locked'); return; }
+    $('joinBtn').disabled = $('practiceBtn').disabled = true;
     try {
+      try {
+        localStorage.setItem('snake_sid', sid); localStorage.setItem('snake_name', name);
+        if (code) localStorage.setItem('snake_code', code);
+      } catch (e2) { /* 무시 */ }
+      if (mode === 'room') { await joinRoom(code, sid, name); return; }
       const snap = await db.ref('players/' + sid).get();
       const v = snap.val();
       if (v && now() - (+v.t || 0) < STALE_MS) { setLoginError('errDup'); return; }
-      try { localStorage.setItem('snake_sid', sid); localStorage.setItem('snake_name', name); } catch (e2) { /* 무시 */ }
       setLoginError(null);
       profile = { sid, name };
       spawn();
     } catch (ex) {
       setLoginError('errJoin', { msg: ex.message });
     } finally {
-      $('joinBtn').disabled = false;
+      $('joinBtn').disabled = $('practiceBtn').disabled = false;
     }
-  });
+  }
+  $('loginForm').addEventListener('submit', (e) => { e.preventDefault(); enter('room'); });
+  $('practiceBtn').addEventListener('click', () => enter('practice'));
 
   $('retryBtn').addEventListener('click', () => { if (me && !me.alive) spawn(); });
   $('homeBtn').addEventListener('click', () => {
     $('dead').classList.add('hidden');
     $('login').classList.remove('hidden');
   });
+  $('leaveBtn').addEventListener('click', () => leaveRoom(false));
 
   // 명예의 전당
   let fame = [];
@@ -660,6 +906,9 @@
       bt.className = me.tired ? 'off' : 'on';
     }
     $('onlineText').textContent = t('online', { n: alive.length });
+    const rt = $('roundText');
+    rt.classList.toggle('hidden', !room);
+    if (room && room.state) rt.textContent = t('hudRound', { r: room.state.round, n: (room.meta || {}).rounds, time: fmtTime(room.state.endAt - now()) });
     $('help').textContent = t(document.body.classList.contains('touch') ? 'helpTouch' : 'helpMouse');
 
     const k = mini.width / WORLD;
@@ -689,6 +938,7 @@
     }
     const rt = now() - INTERP_DELAY;
     for (const r of remotes.values()) updateRemote(r, rt, dt);
+    roomTick();
 
     const screenK = clamp(Math.min(W, H) / 850, 0.7, 1.3);
     let target;
@@ -696,6 +946,7 @@
       cam.x = me.x; cam.y = me.y;
       target = screenK * clamp(1.05 - radiusOf(me.mass) * 0.011, 0.6, 1);
     } else if (!me) {
+      if (room) { cam.x = WORLD / 2; cam.y = WORLD / 2; }
       target = screenK * 0.6;
     } else target = cam.scale;
     cam.scale += (target - cam.scale) * Math.min(1, dt * 3);

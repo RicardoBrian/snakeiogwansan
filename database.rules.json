@@ -52,6 +52,71 @@
     },
     "settings": {
       ".write": false
+    },
+    "roomIndex": {
+      ".write": false
+    },
+    "rooms": {
+      "$code": {
+        "meta": {
+          ".write": false
+        },
+        "state": {
+          ".write": false
+        },
+        "standings": {
+          ".write": false
+        },
+        "roundResults": {
+          ".write": false
+        },
+        "members": {
+          "$sid": {
+            ".write": "root.child('rooms').child($code).child('meta').exists() && $sid.matches(/^[0-9A-Za-z]{1,12}$/)",
+            ".validate": "newData.child('name').isString() && newData.child('name').val().length <= 20"
+          }
+        },
+        "presence": {
+          "$sid": {
+            ".write": "root.child('rooms').child($code).child('meta').exists() && $sid.matches(/^[0-9A-Za-z]{1,12}$/)"
+          }
+        },
+        "players": {
+          "$sid": {
+            ".write": "root.child('rooms').child($code).child('meta').exists() && $sid.matches(/^[0-9A-Za-z]{1,12}$/)",
+            ".validate": "newData.hasChildren(['x', 'y', 'm', 't'])"
+          }
+        },
+        "food": {
+          "$fid": {
+            ".write": "root.child('rooms').child($code).child('meta').exists()"
+          }
+        },
+        "notices": {
+          "$sid": {
+            ".write": "root.child('rooms').child($code).child('meta').exists()"
+          }
+        },
+        "roundScores": {
+          "$rk": {
+            "$sid": {
+              ".write": "newData.exists() && $sid.matches(/^[0-9A-Za-z]{1,12}$/) && root.child('rooms').child($code).child('state/phase').val() == 'round' && root.child('rooms').child($code).child('state/roundKey').val() == $rk && now >= root.child('rooms').child($code).child('state/startAt').val() - 2000 && now <= root.child('rooms').child($code).child('state/endAt').val() + 10000 && (!data.child('best').exists() || newData.child('best').val() >= data.child('best').val()) && (!data.child('kills').exists() || newData.child('kills').val() >= data.child('kills').val())",
+              "best": {
+                ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 5000"
+              },
+              "kills": {
+                ".validate": "newData.isNumber() && newData.val() <= (data.exists() ? data.val() : 0) + 1"
+              },
+              "name": {
+                ".validate": "newData.isString() && newData.val().length <= 20"
+              },
+              "$other": {
+                ".validate": false
+              }
+            }
+          }
+        }
+      }
     }
   }
 }

@@ -74,7 +74,8 @@ gwansan-expedition/       ← Cloudflare Pages "루트 디렉터리"
 - **아이폰은 무음(벨소리) 스위치가 켜져 있으면 합성 음악이 안 들립니다** (iOS 정책). mp3 파일은 무음 모드에서도 재생됩니다.
 
 ## 5. 홍보 포스터
-`promo/관산게임왕_신청포스터.pdf` (A4 1장, QR → https://gwansanjae.pages.dev, 인식 확인 완료).
+`promo/관산게임왕_포스터.pdf` (A4 1장): 2-1, 부스 이름, 1부·2부 종목과 시간, 집결지 컴퓨터실, 규칙 3개, 상품 안내.
+QR이 들어간 신청용 버전은 git 기록(커밋 "Add 2-1 class badge…")에 남아 있습니다.
 문구를 고치려면 `promo/poster.html`을 수정 → Chrome으로 열기 → 인쇄 → "PDF로 저장", 여백 없음, **배경 그래픽 켜기**.
 
 ## 6. 테스트 방법

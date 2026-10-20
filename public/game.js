@@ -34,8 +34,8 @@
 
   // ---------- Firebase 초기화 ----------
   const cfg = window.FIREBASE_CONFIG || {};
-  if (!cfg.databaseURL || /YOUR_/.test(cfg.databaseURL)) {
-    $('loginError').textContent = 'config.js 에 Firebase 설정을 먼저 입력하세요.';
+  if (!cfg.databaseURL) {
+    $('loginError').textContent = 'Firebase 설정이 없습니다. Cloudflare 환경변수 FIREBASE_DATABASE_URL 을 확인하세요.';
     $('connText').textContent = '';
     $('joinBtn').disabled = true;
     return;

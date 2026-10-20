@@ -8,17 +8,23 @@
       }
     },
     "food": {
-      ".write": true
+      "$fid": {
+        ".write": true
+      }
     },
     "scores": {
       ".indexOn": ["best"],
-      ".write": true
+      "$sid": {
+        ".write": true
+      }
     },
     "notices": {
-      ".write": true
+      "$sid": {
+        ".write": true
+      }
     },
     "settings": {
-      ".write": true
+      ".write": false
     }
   }
 }

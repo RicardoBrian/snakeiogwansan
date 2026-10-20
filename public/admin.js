@@ -3,24 +3,53 @@
   const $ = (id) => document.getElementById(id);
 
   const cfg = window.FIREBASE_CONFIG || {};
-  if (!cfg.databaseURL || /YOUR_/.test(cfg.databaseURL)) {
-    $('gateErr').textContent = 'config.js 에 Firebase 설정을 먼저 입력하세요.';
+  if (!cfg.databaseURL) {
+    $('gateErr').textContent = 'Firebase 설정이 없습니다. Cloudflare 환경변수 FIREBASE_DATABASE_URL 을 확인하세요.';
     return;
   }
 
-  function unlock() {
+  let password = '';
+
+  async function adminAction(action) {
+    try {
+      const res = await fetch('api/admin', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ password, action })
+      });
+      const data = await res.json().catch(() => ({ ok: false, error: `서버 오류 (${res.status})` }));
+      if (res.status === 401) {
+        try { sessionStorage.removeItem('snake_admin_pw'); } catch (e) { /* 무시 */ }
+      }
+      return data;
+    } catch (e) {
+      return { ok: false, error: '서버에 연결할 수 없습니다: ' + e.message };
+    }
+  }
+  async function run(action) {
+    const r = await adminAction(action);
+    if (!r.ok) alert('실패: ' + r.error);
+  }
+
+  async function login(pw) {
+    password = pw;
+    const r = await adminAction('check');
+    if (!r.ok) { $('gateErr').textContent = r.error; return; }
+    try { sessionStorage.setItem('snake_admin_pw', pw); } catch (e) { /* 무시 */ }
+    $('gateErr').textContent = '';
     $('gate').classList.add('hidden');
     $('main').classList.remove('hidden');
     start();
   }
-  try { if (sessionStorage.getItem('snake_admin') === '1') return unlock(); } catch (e) { /* 무시 */ }
   $('gateForm').addEventListener('submit', (e) => {
     e.preventDefault();
-    if ($('pw').value === String(window.ADMIN_PASSWORD)) {
-      try { sessionStorage.setItem('snake_admin', '1'); } catch (e2) { /* 무시 */ }
-      unlock();
-    } else $('gateErr').textContent = '비밀번호가 틀렸습니다.';
+    $('gateErr').textContent = '확인 중...';
+    login($('pw').value);
   });
+  try {
+    const saved = sessionStorage.getItem('snake_admin_pw');
+    if (saved) login(saved);
+  } catch (e) { /* 무시 */ }
 
   function start() {
     firebase.initializeApp(cfg);
@@ -36,8 +65,8 @@
       $('status').textContent = locked ? '⏸ 입장 잠금 (라운드 종료됨)' : '🟢 게임 진행 중 (입장 가능)';
       $('status').style.color = locked ? '#f87171' : '#4ade80';
     });
-    $('openBtn').onclick = () => db.ref('settings/locked').set(false);
-    $('lockBtn').onclick = () => { if (confirm('라운드를 종료할까요? 게임 중인 학생들의 게임이 끝납니다.')) db.ref('settings/locked').set(true); };
+    $('openBtn').onclick = () => run('unlock');
+    $('lockBtn').onclick = () => { if (confirm('라운드를 종료할까요? 게임 중인 학생들의 게임이 끝납니다.')) run('lock'); };
 
     // 현재 접속자
     let players = {};
@@ -82,11 +111,10 @@
       a.click();
     };
 
-    $('clearFood').onclick = () => { if (confirm('맵의 먹이를 모두 지울까요? (게임 중인 학생이 있으면 자동으로 다시 생깁니다)')) db.ref('food').remove(); };
+    $('clearFood').onclick = () => { if (confirm('맵의 먹이를 모두 지울까요? (게임 중인 학생이 있으면 자동으로 다시 생깁니다)')) run('clearFood'); };
     $('clearScores').onclick = () => {
       if (confirm('전체 기록을 초기화할까요? 되돌릴 수 없습니다.') && confirm('정말 초기화합니까?')) {
-        db.ref('scores').remove();
-        db.ref('notices').remove();
+        run('resetScores');
       }
     };
   }

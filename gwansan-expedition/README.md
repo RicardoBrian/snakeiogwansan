@@ -92,8 +92,8 @@ npm run dev           # 터미널 2: Cloudflare Pages 로컬 서버 (wrangler pa
 ```
 - 신청 페이지: http://127.0.0.1:5000 (localhost에서는 자동으로 에뮬레이터에 저장, 완료 화면에 "에뮬레이터에 저장됨" 표시)
 - 저장된 데이터 보기: http://127.0.0.1:4000/firestore
-- 관리자 페이지: http://127.0.0.1:5000/admin → 로그인 창에서 **Add new account** → 이메일 `admin@example.com`
-  (에뮬레이터도 이 폴더의 `firestore.rules`를 쓰므로, 이메일을 바꿨다면 바꾼 이메일로)
+- 관리자 페이지: http://127.0.0.1:5000/admin → 로그인 창에서 **Add new account** → 이메일 `qjatjr7575@gmail.com`
+  (에뮬레이터도 이 폴더의 `firestore.rules`를 쓰므로 규칙에 적힌 관리자 이메일로)
 - localhost에서 실제 Firebase에 붙이고 싶으면 주소에 `?emu=0`
 
 ### (3) 보안 규칙 자동 테스트

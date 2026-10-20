@@ -4,7 +4,7 @@ import { test, before, after, beforeEach } from 'node:test';
 import { initializeTestEnvironment, assertSucceeds, assertFails } from '@firebase/rules-unit-testing';
 import { doc, setDoc, getDoc, getDocs, updateDoc, deleteDoc, collection, serverTimestamp } from 'firebase/firestore';
 
-const ADMIN = 'admin@example.com';
+const ADMIN = 'qjatjr7575@gmail.com';
 let env;
 
 before(async () => {

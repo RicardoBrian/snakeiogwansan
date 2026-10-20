@@ -9,7 +9,7 @@ service cloud.firestore {
 
     function isAdmin() {
       return request.auth != null
-        && request.auth.token.email == "admin@example.com"   // ← 내 Google 계정으로 바꾸기
+        && request.auth.token.email == "qjatjr7575@gmail.com"
         && request.auth.token.email_verified == true;
     }
 

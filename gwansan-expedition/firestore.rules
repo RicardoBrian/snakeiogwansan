@@ -1,0 +1,39 @@
+rules_version = '2';
+
+// 관산 유적 탐험대 신청서 보안 규칙
+// - 학생(로그인 없음): 새 신청서 "생성"만 가능. 읽기·수정·삭제 불가.
+// - 문서 ID = 학번 → 같은 학번으로 두 번째 신청하면 "수정"으로 취급되어 거부됨.
+// - 관리자: 아래 이메일로 로그인한 Google 계정만 목록 읽기 가능.
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isAdmin() {
+      return request.auth != null
+        && request.auth.token.email == "admin@example.com"   // ← 내 Google 계정으로 바꾸기
+        && request.auth.token.email_verified == true;
+    }
+
+    function validApplication(studentId) {
+      let d = request.resource.data;
+      return d.keys().hasOnly(['name', 'studentId', 'games', 'createdAt'])
+        && d.keys().hasAll(['name', 'studentId', 'games', 'createdAt'])
+        && studentId.matches('^[0-9]{5}$')
+        && d.studentId == studentId
+        && d.name is string && d.name.size() >= 1 && d.name.size() <= 20
+        && d.games is list && d.games.size() >= 1 && d.games.size() <= 4
+        && d.games.toSet().size() == d.games.size()
+        && d.games.hasOnly(['끄투온라인', '테트리스', '오목', '지렁이 게임'])
+        && d.createdAt == request.time;
+    }
+
+    match /applications/{studentId} {
+      allow create: if validApplication(studentId);
+      allow read: if isAdmin();
+      allow update, delete: if false;
+    }
+
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

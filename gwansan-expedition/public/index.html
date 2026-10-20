@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#2b2118">
+<title>관산 유적 탐험대</title>
+<meta name="description" content="관산 게임왕 대회 참가 신청 — 집결지는 컴퓨터실!">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Black+Han+Sans&display=swap">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<header class="topbar">
+  <span class="topbar-title">⛏ 관산 유적 탐험대</span>
+  <span class="place-chip">📍 집결지: <b>컴퓨터실</b></span>
+  <button type="button" id="muteBtn" class="icon-btn" aria-pressed="false" aria-label="배경음악 끄기">🔊</button>
+</header>
+
+<main id="app">
+  <!-- 1. 시작 화면 -->
+  <section id="titleScreen" class="title-screen">
+    <p class="title-kicker">제1회 관산 게임왕 · 축제 특별 탐사</p>
+    <h1 class="title-logo">관산<br>유적 탐험대</h1>
+    <div class="title-npc" aria-hidden="true"></div>
+    <p class="title-place">📍 집결지: <b>컴퓨터실</b></p>
+    <p class="title-prize">🏆 게임에서 승리하고 상품을 받아가세요!</p>
+    <button type="button" id="startBtn" class="btn btn-big">⛏ 탐사 시작</button>
+    <p class="title-note">※ 소리가 나올 수 있어요. 오른쪽 위 🔊 버튼으로 끌 수 있어요.</p>
+  </section>
+
+  <!-- 2~7. 대화형 진행 -->
+  <section id="stage" class="stage" hidden>
+    <ol class="progress" aria-label="진행 단계">
+      <li>이름</li><li>유적</li><li>지도</li><li>선택</li><li>확인</li><li>완료</li>
+    </ol>
+
+    <div class="npc-row">
+      <div class="npc" id="npc" aria-hidden="true"></div>
+      <div class="bubble" id="bubble" tabindex="0" role="button" aria-label="다음 대사 (클릭 또는 엔터)">
+        <p class="speaker">관산 박사</p>
+        <p class="line" id="line" aria-hidden="true"></p>
+        <span class="next-hint" id="nextHint" aria-hidden="true">▼</span>
+      </div>
+    </div>
+    <p class="sr-only" id="lineSr" aria-live="polite"></p>
+    <div class="dialog-tools" id="dialogTools">
+      <span class="tap-hint">말풍선을 누르거나 엔터 ⏎</span>
+      <button type="button" id="skipLines" class="btn btn-ghost btn-small">대사 건너뛰기 ⏭</button>
+    </div>
+
+    <div id="panel" class="panel" tabindex="-1"></div>
+  </section>
+</main>
+
+<!-- 신청 연출: 바위 + 도장 -->
+<div id="fx" class="fx" hidden role="dialog" aria-modal="true" aria-label="탐사대 등록 중">
+  <div class="fx-scene">
+    <div class="fx-torch fx-torch-l" aria-hidden="true">🔥</div>
+    <div class="fx-torch fx-torch-r" aria-hidden="true">🔥</div>
+    <div class="fx-hero" aria-hidden="true"><span>🏃</span></div>
+    <div class="fx-boulder" aria-hidden="true">
+      <svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="46" fill="#7d7266" stroke="#3d342c" stroke-width="5"/><path d="M22 40 L40 46 L36 62 M60 20 L56 38 L72 46 M58 70 L70 62 L80 72" stroke="#3d342c" stroke-width="4" fill="none" stroke-linecap="round"/><circle cx="34" cy="28" r="6" fill="#958a7e"/></svg>
+    </div>
+    <div class="fx-ground" aria-hidden="true"></div>
+  </div>
+  <p class="fx-caption" id="fxCaption" aria-live="assertive"></p>
+  <div class="stamp fx-stamp" id="fxStamp" hidden><span>탐사대<br>등록 완료!</span></div>
+  <button type="button" id="fxSkip" class="btn btn-ghost btn-small fx-skip">애니메이션 건너뛰기 ⏭</button>
+</div>
+
+<audio id="bgm" src="assets/bgm.mp3" loop preload="none"></audio>
+
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script src="firebase-config.js"></script>
+<script src="shared.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

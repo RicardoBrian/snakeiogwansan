@@ -1,0 +1,15 @@
+{
+  "name": "gwansan-expedition",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "emulators": "firebase emulators:start --project demo-gwansan",
+    "test:rules": "firebase emulators:exec --only firestore --project demo-gwansan \"node --test tests/rules.test.js\"",
+    "deploy": "firebase deploy --only hosting,firestore:rules"
+  },
+  "devDependencies": {
+    "@firebase/rules-unit-testing": "^3.0.4",
+    "firebase": "^10.12.2",
+    "firebase-tools": "^13.0.0"
+  }
+}

@@ -20,7 +20,7 @@
 
   const ACTS = ['left', 'right', 'soft', 'hard', 'cw', 'ccw', 'r180', 'hold'];
   const DEFAULT_CFG = {
-    das: 150, arr: 30, sdf: 20,
+    das: 150, arr: 30, sdf: 60, // sdf: ↓ 로 한 칸 내려가는 시간(ms) — 내려가는 모습이 보이게
     keys: { left: ['ArrowLeft'], right: ['ArrowRight'], soft: ['ArrowDown'], hard: ['Space'],
       cw: ['ArrowUp', 'KeyX'], ccw: ['KeyZ'], r180: ['KeyA'], hold: ['KeyC', 'ShiftLeft'] }
   };
@@ -91,13 +91,14 @@
       const s = JSON.parse(localStorage.getItem('tetris_cfg') || 'null');
       if (s) {
         for (const k of ['das', 'arr', 'sdf']) if (typeof s[k] === 'number') c[k] = s[k];
+        if (!s.v && s.sdf === 20) c.sdf = DEFAULT_CFG.sdf; // 예전 기본값(너무 빨라 안 보임)은 새 기본값으로
         if (s.keys) for (const a of ACTS) if (Array.isArray(s.keys[a])) c.keys[a] = s.keys[a].filter((x) => typeof x === 'string');
       }
     } catch (e) { /* 저장소 사용 불가 */ }
     return c;
   }
   let cfg = loadCfg();
-  function saveCfg() { try { localStorage.setItem('tetris_cfg', JSON.stringify(cfg)); } catch (e) { /* 무시 */ } }
+  function saveCfg() { try { localStorage.setItem('tetris_cfg', JSON.stringify(Object.assign({ v: 2 }, cfg))); } catch (e) { /* 무시 */ } }
 
   // ---------- Firebase 초기화 ----------
   const fbCfg = window.FIREBASE_CONFIG || {};
@@ -612,9 +613,22 @@
   // ---------- 설정 화면 ----------
   const keyLabel = (code) => ({ ArrowLeft: '←', ArrowRight: '→', ArrowUp: '↑', ArrowDown: '↓', Space: 'Space' })[code] ||
     code.replace(/^Key|^Digit/, '').replace(/(Left|Right)$/, '').replace('Control', 'Ctrl');
+  // 아래 안내: 자주 쓰는 키만 키 모양으로 (나머지 키는 ⚙ 설정에서 확인/변경)
+  const HELP = [[['left', 'right'], 'h_move'], [['soft'], 'h_soft'], [['cw'], 'h_cw'], [['hard'], 'h_hard'], [['hold'], 'h_hold']];
   function renderHelp() {
-    $('help').textContent = document.body.classList.contains('touch') ? '' :
-      ACTS.map((a) => `${t('k_' + a)} ${cfg.keys[a].map(keyLabel).join('/') || '-'}`).join(' · ');
+    const box = $('help');
+    box.innerHTML = '';
+    if (document.body.classList.contains('touch')) return;
+    for (const [acts, label] of HELP) {
+      const item = document.createElement('span');
+      for (const a of acts) {
+        const k = document.createElement('kbd');
+        k.textContent = cfg.keys[a].length ? keyLabel(cfg.keys[a][0]) : '-';
+        item.appendChild(k);
+      }
+      item.append(' ' + t(label));
+      box.appendChild(item);
+    }
   }
   function renderKeyList() {
     const box = $('keyList');
@@ -674,7 +688,7 @@
     document.body.classList.toggle('wide', wide);
     const touch = document.body.classList.contains('touch');
     const availW = wide ? Math.min(innerWidth * 0.55, innerWidth - 360) : innerWidth - 24;
-    const availH = innerHeight - 52 - 70 - (touch ? 140 : 28) - 16;
+    const availH = innerHeight - 52 - 70 - (touch ? 140 : 40) - 16;
     cell = clamp(Math.floor(Math.min(availW / UNITS_W, (wide || !touch ? availH : innerHeight * 0.6) / UNITS_H)), 12, 36);
     DPR = Math.min(window.devicePixelRatio || 1, 2);
     const w = Math.round(UNITS_W * cell), h = Math.round(UNITS_H * cell);
@@ -947,7 +961,8 @@
     if (!grounded()) {
       if (rowMs <= 0) { while (tryMove(0, 1)); }
       else {
-        G.fallAcc += dt;
+        // 느린 중력에서 쌓인 시간을 ↓(빠른 속도)로 한꺼번에 쓰면 순간이동처럼 보이므로 한 칸 분량까지만 이어 씀
+        G.fallAcc = Math.min(G.fallAcc, rowMs) + dt;
         while (G.fallAcc >= rowMs) { G.fallAcc -= rowMs; if (!tryMove(0, 1)) break; }
       }
     }

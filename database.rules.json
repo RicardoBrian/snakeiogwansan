@@ -123,6 +123,57 @@
     },
     "omokIndex": {
       ".write": false
+    },
+    "tetris": {
+      "rooms": {
+        ".write": false
+      },
+      "lobby": {
+        "$rid": {
+          "$sid": {
+            ".write": "$sid.matches(/^[0-9A-Za-z]{1,12}$/) && (!newData.exists() || root.child('tetris/rooms/' + $rid).exists())",
+            ".validate": "newData.hasChildren(['n', 't']) && newData.child('n').isString() && newData.child('n').val().length <= 20"
+          }
+        }
+      },
+      "boards": {
+        "$rid": {
+          "$sid": {
+            ".write": "$sid.matches(/^[0-9A-Za-z]{1,12}$/) && (!newData.exists() || root.child('tetris/rooms/' + $rid).exists())",
+            ".validate": "newData.hasChildren(['n', 'g', 'b']) && newData.child('b').isString() && newData.child('b').val().length <= 200 && newData.child('n').isString() && newData.child('n').val().length <= 20"
+          }
+        }
+      },
+      "entries": {
+        "$rid": {
+          "$gid": {
+            "$sid": {
+              ".write": "!data.exists() && newData.exists() && $sid.matches(/^[0-9A-Za-z]{1,12}$/) && root.child('tetris/rooms/' + $rid + '/game/id').val() == $gid && root.child('tetris/rooms/' + $rid + '/game/start').val() + 3000 > now",
+              ".validate": "newData.hasChildren(['n']) && newData.child('n').isString() && newData.child('n').val().length <= 20"
+            }
+          }
+        }
+      },
+      "results": {
+        "$rid": {
+          "$gid": {
+            "$sid": {
+              ".write": "!data.exists() && newData.exists() && root.child('tetris/entries/' + $rid + '/' + $gid + '/' + $sid).exists()",
+              ".validate": "newData.hasChildren(['t']) && newData.child('t').val() == now"
+            }
+          }
+        }
+      },
+      "attacks": {
+        "$rid": {
+          "$sid": {
+            "$aid": {
+              ".write": "!newData.exists() || root.child('tetris/rooms/' + $rid).exists()",
+              ".validate": "newData.hasChildren(['l', 'g']) && newData.child('l').isNumber() && newData.child('l').val() >= 1 && newData.child('l').val() <= 20"
+            }
+          }
+        }
+      }
     }
   }
 }

@@ -115,6 +115,20 @@ details.box { background: var(--panel2); border-radius: 10px; padding: 10px 14px
 details.box summary { cursor: pointer; font-weight: 700; }
 #status { font-size: 18px; font-weight: 700; }
 #oGamesBody td { white-space: nowrap; }
+/* 테트리스 실시간 보드 */
+.t-thumbs { display: flex; flex-wrap: wrap; gap: 10px; }
+.t-thumbs .thumb { display: flex; flex-direction: column; align-items: center; gap: 3px; }
+.t-thumbs .tb { position: relative; border: 2px solid var(--line); border-radius: 4px; line-height: 0; }
+.t-thumbs canvas { display: block; }
+.t-thumbs .tname { font-size: 12px; max-width: 150px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--sub); }
+.t-thumbs .tstat { position: absolute; left: 0; right: 0; top: 40%; text-align: center; font-size: 14px; line-height: 1.3; }
+.t-thumbs .dead .tb { border-color: #4b1d1d; }
+.t-thumbs .dead canvas { opacity: .4; }
+.t-thumbs .dead .tstat { color: #f87171; }
+.t-thumbs .win .tb { border-color: var(--yellow); }
+.t-thumbs .win .tstat { color: var(--yellow); }
+.t-thumbs .idle canvas { opacity: .5; }
+.t-thumbs .idle .tstat { color: var(--sub); }
 
 /* ----- 좁은 화면 ----- */
 @media (max-width: 1200px) {

@@ -1,0 +1,111 @@
+* { box-sizing: border-box; }
+html, body { margin: 0; min-height: 100%; background: #0b0f17; color: #e8ecf4;
+  user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; -webkit-tap-highlight-color: transparent; }
+body.wide { height: 100%; overflow: hidden; }
+.hidden { display: none !important; }
+.muted { color: #6f7c98; font-size: 13px; }
+.error { color: #ff7676; min-height: 1.2em; margin: 10px 0 0; font-size: 14px; }
+
+/* 로그인 / 설정 카드 (뱀 게임과 같은 모양) */
+.overlay { position: fixed; inset: 0; display: flex; justify-content: center; overflow-y: auto;
+  background: rgba(5, 8, 14, 0.72); z-index: 10; padding: 56px 16px 16px; }
+.card { width: 100%; max-width: 380px; margin: auto; background: #161d2b; border: 1px solid #2a3550; border-radius: 16px;
+  padding: 28px 26px; text-align: center; box-shadow: 0 20px 60px rgba(0,0,0,.5); }
+.card.wide { max-width: 460px; }
+.card h1 { margin: 0 0 6px; font-size: 30px; letter-spacing: 1px; }
+.sub { margin: 0 0 18px; color: #9aa7c2; }
+input { width: 100%; padding: 12px 14px; margin-bottom: 10px; border-radius: 10px; border: 1px solid #33405e;
+  background: #0f1522; color: #fff; font-size: 16px; outline: none; user-select: text; -webkit-user-select: text; }
+input:focus { border-color: #4ade80; }
+button { width: 100%; padding: 13px; border: 0; border-radius: 10px; background: #22c55e; color: #05210f;
+  font-weight: bold; font-size: 17px; cursor: pointer; margin-top: 4px; }
+button:hover { background: #4ade80; }
+button:disabled { background: #3b4660; color: #8b95ad; cursor: default; }
+button.ghost { background: transparent; color: #9aa7c2; border: 1px solid #33405e; margin-top: 8px; }
+button.ghost:hover { background: #1f2840; }
+
+h3.pick { margin: 10px 0 8px; font-size: 14px; color: #9aa7c2; text-align: left; }
+#roomList { display: grid; gap: 6px; margin-bottom: 10px; max-height: 240px; overflow-y: auto; }
+#roomList p { margin: 4px 0 8px; text-align: left; }
+.roomBtn { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin: 0; padding: 11px 14px;
+  background: #0f1522; color: #e8ecf4; border: 1px solid #33405e; font-size: 15px; text-align: left; }
+.roomBtn:hover { background: #1f2840; }
+.roomBtn span { color: #9aa7c2; font-size: 13px; font-weight: normal; white-space: nowrap; }
+.roomBtn.sel { border-color: #4ade80; background: #12301f; }
+
+.field { display: flex; align-items: center; justify-content: space-between; gap: 12px; text-align: left; font-size: 14px; color: #c4cde0; }
+.field input { width: 90px; margin: 4px 0; padding: 8px 10px; text-align: right; }
+.keyRow { display: flex; align-items: center; justify-content: space-between; gap: 12px; font-size: 14px; color: #c4cde0; }
+.keyRow button { width: 150px; margin: 3px 0; padding: 7px 10px; font-size: 14px; }
+.keyRow button.wait { border-color: #fbbf24; color: #fbbf24; }
+#cfgClose { margin-top: 16px; }
+
+/* 방 화면 */
+#room { display: flex; flex-direction: column; min-height: 100vh; }
+body.wide #room { height: 100vh; }
+#bar { display: flex; align-items: center; gap: 12px; padding: 8px 12px; padding-right: 200px; min-height: 52px;
+  background: #111827; border-bottom: 1px solid #1f2a40; flex-wrap: wrap; }
+#bar b { font-size: 17px; }
+#bar .grow { flex: 1; }
+#bar button { width: auto; margin: 0; padding: 7px 14px; font-size: 14px; }
+#statusText { color: #fbbf24; font-weight: bold; font-size: 14px; }
+#layout { flex: 1; display: flex; flex-direction: column; gap: 14px; padding: 12px; min-height: 0; }
+body.wide #layout { flex-direction: row; }
+#playArea { display: flex; flex-direction: column; align-items: center; gap: 8px; }
+#fieldWrap { position: relative; }
+#play { display: block; }
+#fieldMsg { position: absolute; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px;
+  background: rgba(5, 8, 14, 0.62); text-align: center; padding: 12px; pointer-events: none; }
+#msgBig { font-size: 34px; color: #fbbf24; }
+#msgSmall { font-size: 14px; color: #c4cde0; line-height: 1.5; }
+
+#stats { display: flex; gap: 8px; }
+#stats div { min-width: 64px; background: #0f1522; border: 1px solid #1f2a40; border-radius: 10px; padding: 6px 8px; text-align: center; }
+#stats b { display: block; font-size: 19px; color: #4ade80; font-variant-numeric: tabular-nums; }
+#stats span { font-size: 12px; color: #9aa7c2; }
+#help { margin: 0; text-align: center; max-width: 560px; font-size: 12px; }
+
+#side { flex: 1; display: flex; flex-direction: column; gap: 12px; min-width: 0; min-height: 0; }
+#thumbs { flex: 1; display: flex; flex-wrap: wrap; align-content: flex-start; gap: 8px; min-height: 0; overflow: hidden; }
+.thumb { display: flex; flex-direction: column; align-items: center; gap: 3px; }
+.thumb .tb { position: relative; border: 2px solid #2a3550; border-radius: 4px; line-height: 0; }
+.thumb canvas { display: block; }
+.thumb .tname { font-size: 12px; max-width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: #c4cde0; }
+.thumb .tstat { position: absolute; left: 0; right: 0; top: 40%; text-align: center; font-size: 13px; line-height: 1.3; }
+.thumb.dead .tb { border-color: #4b1d1d; }
+.thumb.dead canvas { opacity: 0.4; }
+.thumb.dead .tstat { color: #f87171; }
+.thumb.win .tb { border-color: #fbbf24; }
+.thumb.win .tstat { color: #fbbf24; }
+.thumb.inc .tstat { top: auto; bottom: 2px; color: #f87171; }
+.thumb.idle canvas { opacity: 0.5; }
+.thumb.idle .tstat { color: #9aa7c2; }
+
+#standPanel { background: #161d2b; border: 1px solid #2a3550; border-radius: 12px; padding: 10px 12px; max-height: 38vh; overflow-y: auto; }
+#standPanel h3 { margin: 0 0 6px; font-size: 14px; color: #fbbf24; }
+#standPanel p { margin: 6px 0 0; font-size: 12px; }
+table { width: 100%; border-collapse: collapse; font-size: 13px; }
+th, td { padding: 4px 6px; border-bottom: 1px solid #253049; text-align: left; }
+th { color: #9aa7c2; font-weight: normal; }
+th.num, td.num { text-align: right; font-variant-numeric: tabular-nums; }
+tr.me td { color: #4ade80; font-weight: bold; }
+
+/* 터치 기기 버튼 */
+#touchPad { display: none; grid-template-columns: repeat(4, 64px); gap: 8px; }
+body.touch #touchPad { display: grid; }
+#touchPad button { margin: 0; padding: 0; height: 56px; font-size: 20px; background: rgba(34, 197, 94, .15);
+  border: 1px solid rgba(74, 222, 128, .5); color: #bbf7d0; touch-action: none; }
+#touchPad button.active { background: rgba(34, 197, 94, .5); }
+
+#toast { position: fixed; top: 64px; left: 50%; transform: translateX(-50%); z-index: 20; pointer-events: none;
+  background: rgba(239, 68, 68, .92); color: #fff; font-weight: bold; padding: 10px 18px; border-radius: 10px;
+  opacity: 0; transition: opacity .25s; max-width: calc(100% - 32px); text-align: center; }
+#toast.show { opacity: 1; }
+
+@media (max-width: 700px) {
+  #bar { padding-right: 12px; padding-top: 48px; gap: 8px; }
+  #stats div { min-width: 52px; padding: 4px 6px; }
+  #stats b { font-size: 16px; }
+  #langChip button { padding: 4px 8px; font-size: 12px; }
+  .card { padding: 22px 18px; }
+}

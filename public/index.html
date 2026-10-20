@@ -7,7 +7,7 @@
 <link rel="icon" href="data:,">
 <link rel="stylesheet" href="fonts/fonts.css?v=20261020c">
 <link rel="stylesheet" href="common.css?v=20261020c">
-<link rel="stylesheet" href="admin.css?v=20261020c">
+<link rel="stylesheet" href="admin.css?v=20261020d">
 </head>
 <body>
 
@@ -265,19 +265,98 @@
         </div>
       </div>
     </section>
+
+    <!-- ================= 🧱 테트리스 ================= -->
+    <section class="game" data-game="tetris">
+      <div data-view="rooms">
+        <div class="split">
+          <aside class="list-pane">
+            <button id="tNewBtn" class="go new-btn" type="button" data-i18n="tNewRoom"></button>
+            <div id="tCards" class="cards"></div>
+            <p id="tNoRooms" class="muted" data-i18n="tNoRoomsAdmin"></p>
+          </aside>
+          <div>
+            <div id="tEmpty" class="empty-state" data-i18n="pickHint"></div>
+
+            <div id="tCreate" class="panel hidden">
+              <h2 data-i18n="tCreateTitle"></h2>
+              <form id="tCreateForm" class="form">
+                <label><span data-i18n="tFName"></span><input id="tName" maxlength="20" required data-i18n-ph="tRoomNamePh"></label>
+              </form>
+              <div class="row">
+                <button class="go" type="submit" form="tCreateForm" data-i18n="tCreateBtn"></button>
+                <button id="tCreateCancel" class="ghost" type="button" data-i18n="cancel"></button>
+              </div>
+              <p class="muted" data-i18n="tAdminHint"></p>
+            </div>
+
+            <div id="tDetail" class="panel hidden">
+              <div class="detail-head">
+                <div class="code-box">
+                  <div class="muted" data-i18n="joinCode"></div>
+                  <div id="tCode" class="big-code"></div>
+                </div>
+                <div style="flex:1; min-width: 200px">
+                  <div class="row"><span id="tDName" class="detail-title"></span><span id="tBadge" class="badge"></span></div>
+                  <div id="tInfo" class="muted"></div>
+                </div>
+              </div>
+              <div class="next">
+                <div class="next-label" data-i18n="nextLabel"></div>
+                <div id="tPhase" class="next-text"></div>
+                <div class="row">
+                  <button id="tStartBtn" class="go big" data-i18n="tStart"></button>
+                  <button id="tStopBtn" class="stop big" data-i18n="tStop"></button>
+                </div>
+              </div>
+              <div class="row tools">
+                <button id="tLinkBtn" class="ghost" data-i18n="copyJoinLink"></button>
+                <button id="tCsvBtn" class="ghost" data-i18n="csv"></button>
+                <span class="spacer"></span>
+                <button id="tResetBtn" class="danger-ghost small" data-i18n="tResetRoom"></button>
+                <button id="tDeleteBtn" class="danger-ghost small" data-i18n="delete"></button>
+              </div>
+
+              <div class="cols section">
+                <div>
+                  <h2><span data-i18n="tMonitor"></span> <span id="tLobbyCount" class="muted"></span></h2>
+                  <div id="tThumbs" class="t-thumbs"></div>
+                </div>
+                <div>
+                  <h2 data-i18n="tStandings"></h2>
+                  <div class="scroll"><table>
+                    <thead><tr><th>#</th><th data-i18n="colSid"></th><th data-i18n="colName"></th><th class="num" data-i18n="tColPts"></th><th class="num" data-i18n="tColWins"></th><th class="num" data-i18n="colGames"></th><th class="num" data-i18n="tColSent"></th></tr></thead>
+                    <tbody id="tStandBody"></tbody>
+                  </table></div>
+                  <p class="muted" data-i18n="tPointsHint"></p>
+                  <h2 id="tLastTitle" class="section"></h2>
+                  <div class="scroll"><table>
+                    <thead><tr><th>#</th><th data-i18n="colName"></th><th class="num" data-i18n="tSent"></th><th class="num" data-i18n="tLines"></th><th class="num" data-i18n="tColPts"></th></tr></thead>
+                    <tbody id="tLastBody"></tbody>
+                  </table></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
   </main>
 </div>
 
 <script src="i18n.js?v=20261020c"></script>
 <script src="omok-i18n.js?v=20261020c"></script>
+<script src="tetris-i18n.js?v=20261020d"></script>
 <script src="admin-i18n.js?v=20261020c"></script>
 <script src="lib/firebase-app-compat.js?v=20261020c"></script>
 <script src="lib/firebase-database-compat.js?v=20261020c"></script>
 <script src="lib/firebase-auth-compat.js?v=20261020c"></script>
 <script src="api/config"></script>
 <script src="omok-core.js?v=20261020c"></script>
+<script src="tetris-common.js?v=20261020d"></script>
 <script src="admin.js?v=20261020c"></script>
 <script src="snake-admin.js?v=20261020c"></script>
 <script src="omok-admin.js?v=20261020c"></script>
+<script src="tetris-admin.js?v=20261020d"></script>
 </body>
 </html>

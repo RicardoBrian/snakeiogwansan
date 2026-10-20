@@ -1,0 +1,24 @@
+{
+  "rules": {
+    ".read": true,
+    "players": {
+      "$sid": {
+        ".write": "$sid.matches(/^[0-9A-Za-z]{1,12}$/)",
+        ".validate": "newData.hasChildren(['x', 'y', 'm', 't'])"
+      }
+    },
+    "food": {
+      ".write": true
+    },
+    "scores": {
+      ".indexOn": ["best"],
+      ".write": true
+    },
+    "notices": {
+      ".write": true
+    },
+    "settings": {
+      ".write": true
+    }
+  }
+}

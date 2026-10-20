@@ -1,0 +1,54 @@
+* { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; overflow: hidden; background: #0b0f17; color: #e8ecf4;
+  font-family: "Malgun Gothic", "Apple SD Gothic Neo", "Noto Sans KR", sans-serif; user-select: none; }
+#game { position: fixed; inset: 0; display: block; cursor: crosshair; }
+.hidden { display: none !important; }
+
+.overlay { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center;
+  background: rgba(5, 8, 14, 0.72); z-index: 10; padding: 16px; }
+.card { width: 100%; max-width: 380px; background: #161d2b; border: 1px solid #2a3550; border-radius: 16px;
+  padding: 28px 26px; text-align: center; box-shadow: 0 20px 60px rgba(0,0,0,.5); }
+.card h1 { margin: 0 0 6px; font-size: 34px; letter-spacing: 1px; }
+.sub { margin: 0 0 18px; color: #9aa7c2; }
+.muted { color: #6f7c98; font-size: 13px; }
+.error { color: #ff7676; min-height: 1.2em; margin: 10px 0 0; font-size: 14px; }
+
+input { width: 100%; padding: 12px 14px; margin-bottom: 10px; border-radius: 10px; border: 1px solid #33405e;
+  background: #0f1522; color: #fff; font-size: 16px; outline: none; }
+input:focus { border-color: #4ade80; }
+button { width: 100%; padding: 13px; border: 0; border-radius: 10px; background: #22c55e; color: #05210f;
+  font-weight: bold; font-size: 17px; cursor: pointer; margin-top: 4px; }
+button:hover { background: #4ade80; }
+button:disabled { background: #3b4660; color: #8b95ad; cursor: default; }
+button.ghost { background: transparent; color: #9aa7c2; border: 1px solid #33405e; margin-top: 8px; }
+button.ghost:hover { background: #1f2840; }
+
+.fame { margin-top: 18px; text-align: left; border-top: 1px solid #2a3550; padding-top: 12px; }
+.fame h3 { margin: 0 0 8px; font-size: 15px; text-align: center; }
+.fame ol { margin: 0; padding-left: 26px; font-size: 14px; max-height: 220px; overflow: auto; }
+.fame li { padding: 2px 0; }
+.fame li span { float: right; color: #fbbf24; }
+
+.result { display: flex; gap: 10px; margin-bottom: 18px; }
+.result div { flex: 1; background: #0f1522; border-radius: 10px; padding: 12px 4px; }
+.result b { display: block; font-size: 26px; color: #4ade80; }
+.result span { font-size: 13px; color: #9aa7c2; }
+
+#hud { position: fixed; inset: 0; pointer-events: none; z-index: 5; }
+#stats { position: absolute; top: 12px; left: 12px; display: flex; gap: 8px; }
+#stats span { background: rgba(15, 21, 34, .75); padding: 7px 12px; border-radius: 8px; font-weight: bold; font-size: 15px; }
+#board { position: absolute; top: 12px; right: 12px; width: 210px; background: rgba(15, 21, 34, .75);
+  border-radius: 10px; padding: 10px 12px; }
+#board h3 { margin: 0 0 6px; font-size: 14px; color: #fbbf24; }
+#board ol { margin: 0; padding-left: 22px; font-size: 13px; }
+#board li { padding: 1px 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+#board li span { float: right; color: #9aa7c2; }
+#board li.me { color: #4ade80; font-weight: bold; }
+#minimap { position: absolute; bottom: 12px; right: 12px; border-radius: 10px; background: rgba(15, 21, 34, .75);
+  border: 1px solid #2a3550; }
+#help { position: absolute; bottom: 12px; left: 12px; font-size: 12px; color: #6f7c98; }
+
+#toast { position: fixed; top: 60px; left: 50%; transform: translateX(-50%); z-index: 20; pointer-events: none;
+  background: rgba(34, 197, 94, .92); color: #05210f; font-weight: bold; padding: 10px 18px; border-radius: 10px;
+  opacity: 0; transition: opacity .25s; }
+#toast.show { opacity: 1; }

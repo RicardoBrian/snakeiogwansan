@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SNAKE.IO 관리자</title>
+<link rel="icon" href="data:,">
+<style>
+  * { box-sizing: border-box; }
+  body { margin: 0; background: #0b0f17; color: #e8ecf4; font-family: "Malgun Gothic", "Apple SD Gothic Neo", sans-serif; }
+  .wrap { max-width: 1100px; margin: 0 auto; padding: 24px 16px; }
+  h1 { margin: 0 0 16px; }
+  h2 { margin: 0 0 10px; font-size: 18px; }
+  .panel { background: #161d2b; border: 1px solid #2a3550; border-radius: 14px; padding: 18px; margin-bottom: 16px; }
+  .row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+  .grid { display: grid; grid-template-columns: 1fr 1.6fr; gap: 16px; }
+  @media (max-width: 800px) { .grid { grid-template-columns: 1fr; } }
+  button { padding: 10px 16px; border: 0; border-radius: 9px; font-weight: bold; font-size: 15px; cursor: pointer; background: #334155; color: #fff; }
+  button.go { background: #22c55e; color: #05210f; }
+  button.stop { background: #ef4444; }
+  button.on { outline: 2px solid #fbbf24; }
+  input { padding: 10px 12px; border-radius: 9px; border: 1px solid #33405e; background: #0f1522; color: #fff; font-size: 15px; }
+  table { width: 100%; border-collapse: collapse; font-size: 15px; }
+  th, td { padding: 7px 8px; border-bottom: 1px solid #253049; text-align: left; }
+  th { color: #9aa7c2; font-weight: normal; }
+  th.num, td.num { text-align: right; font-variant-numeric: tabular-nums; }
+  tr.top1 td { color: #fbbf24; font-weight: bold; }
+  tr.top2 td { color: #e5e7eb; font-weight: bold; }
+  tr.top3 td { color: #d6a36a; font-weight: bold; }
+  #status { font-size: 18px; font-weight: bold; }
+  .muted { color: #6f7c98; font-size: 13px; }
+  .hidden { display: none !important; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>🐍 SNAKE.IO 관리자</h1>
+
+  <div id="gate" class="panel">
+    <h2>관리자 비밀번호</h2>
+    <form id="gateForm" class="row">
+      <input id="pw" type="password" placeholder="비밀번호" autofocus>
+      <button class="go" type="submit">확인</button>
+      <span id="gateErr" style="color:#ff7676"></span>
+    </form>
+  </div>
+
+  <div id="main" class="hidden">
+    <div class="panel">
+      <div class="row">
+        <span id="status">상태 확인 중...</span>
+        <span style="flex:1"></span>
+        <button id="openBtn" class="go">▶ 라운드 시작 (입장 허용)</button>
+        <button id="lockBtn" class="stop">■ 라운드 종료 (입장 잠금)</button>
+      </div>
+      <p class="muted">라운드 종료를 누르면 게임 중인 모든 학생의 현재 점수가 기록되고 게임이 끝납니다.</p>
+    </div>
+
+    <div class="grid">
+      <div class="panel">
+        <h2>현재 접속자 <span id="liveCount" class="muted"></span></h2>
+        <table><thead><tr><th>#</th><th>학번</th><th>이름</th><th class="num">점수</th></tr></thead><tbody id="liveBody"></tbody></table>
+      </div>
+      <div class="panel">
+        <div class="row" style="margin-bottom:10px">
+          <h2 style="margin:0">전체 순위</h2>
+          <span style="flex:1"></span>
+          <button id="sortBest" class="on">최고점수순</button>
+          <button id="sortKills">처치순</button>
+          <button id="csvBtn">CSV 저장</button>
+        </div>
+        <table><thead><tr><th>순위</th><th>학번</th><th>이름</th><th class="num">최고점수</th><th class="num">처치</th><th class="num">판수</th></tr></thead><tbody id="rankBody"></tbody></table>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h2>관리</h2>
+      <div class="row">
+        <button id="clearFood">먹이 초기화</button>
+        <button id="clearScores" class="stop">전체 기록 초기화</button>
+      </div>
+      <p class="muted">기록 초기화는 되돌릴 수 없습니다. 초기화 전에 CSV 저장을 권장합니다.</p>
+    </div>
+  </div>
+</div>
+
+<script src="lib/firebase-app-compat.js"></script>
+<script src="lib/firebase-database-compat.js"></script>
+<script src="config.js"></script>
+<script src="admin.js"></script>
+</body>
+</html>

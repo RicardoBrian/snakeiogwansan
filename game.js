@@ -1,0 +1,626 @@
+(() => {
+  'use strict';
+
+  // ---------- 게임 설정 ----------
+  const WORLD = 4000;            // 맵 크기 (정사각형)
+  const FOOD_TARGET = 700;       // 맵에 유지할 먹이 개수
+  const SEND_INTERVAL = 100;     // 내 위치 전송 주기(ms) = 초당 10회
+  const STALE_MS = 4000;         // 이 시간 동안 소식 없는 플레이어는 숨김
+  const INTERP_DELAY = 150;      // 다른 플레이어를 이만큼 과거 시점으로 보간해서 그림
+  const SPEED = 170, BOOST_SPEED = 340;
+  const START_MASS = 10, MIN_BOOST_MASS = 15, BOOST_COST = 3;
+  const SP = 5;                  // 몸통 궤적 점 간격
+  const SPAWN_GRACE = 1500;      // 시작 직후 무적 시간(ms)
+  const HIDDEN_LIMIT = 3000;     // 다른 창으로 나가 있으면 탈락까지 시간(ms)
+
+  const $ = (id) => document.getElementById(id);
+  const rand = (a, b) => a + Math.random() * (b - a);
+  const clamp = (v, a, b) => (v < a ? a : v > b ? b : v);
+  const angDiff = (t, a) => {
+    let d = (t - a) % (Math.PI * 2);
+    if (d > Math.PI) d -= Math.PI * 2;
+    if (d < -Math.PI) d += Math.PI * 2;
+    return d;
+  };
+  const radiusOf = (m) => 9 + Math.min(21, Math.sqrt(m) * 0.9);
+  const lengthOf = (m) => 60 + 8 * Math.pow(m, 0.85);
+  const turnRateOf = (m) => Math.max(2.4, 5 - m / 250);
+  const foodRadius = (v) => Math.min(11, 4 + v * 1.5);
+  const hueOf = (sid) => {
+    let h = 7;
+    for (const c of sid) h = (h * 131 + c.charCodeAt(0) * 17) % 360;
+    return h;
+  };
+
+  // ---------- Firebase 초기화 ----------
+  const cfg = window.FIREBASE_CONFIG || {};
+  if (!cfg.databaseURL || /YOUR_/.test(cfg.databaseURL)) {
+    $('loginError').textContent = 'config.js 에 Firebase 설정을 먼저 입력하세요.';
+    $('connText').textContent = '';
+    $('joinBtn').disabled = true;
+    return;
+  }
+  firebase.initializeApp(cfg);
+  const db = firebase.database();
+  if (new URLSearchParams(location.search).has('emu')) db.useEmulator('127.0.0.1', 9000);
+  const SV = firebase.database.ServerValue;
+  const playersRef = db.ref('players');
+  const foodRef = db.ref('food');
+
+  let serverOffset = 0;
+  const now = () => Date.now() + serverOffset;
+  db.ref('.info/serverTimeOffset').on('value', (s) => { serverOffset = s.val() || 0; });
+
+  let connected = false;
+  db.ref('.info/connected').on('value', (s) => {
+    connected = !!s.val();
+    $('connText').textContent = connected ? '🟢 서버 연결됨' : '🔴 서버에 연결 중...';
+  });
+
+  let locked = false;
+  db.ref('settings/locked').on('value', (s) => {
+    locked = !!s.val();
+    updateLockText();
+    if (locked && me && me.alive) endGame('라운드 종료', '관리자가 라운드를 종료했습니다.', null, false);
+  });
+  function updateLockText() {
+    if (locked) $('loginError').textContent = '⏸ 지금은 입장할 수 없습니다. (관리자 대기 중)';
+    else if ($('loginError').textContent.startsWith('⏸')) $('loginError').textContent = '';
+  }
+
+  // ---------- 상태 ----------
+  let me = null;                    // 내 뱀
+  let profile = { sid: '', name: '' };
+  const remotes = new Map();        // 다른 플레이어
+  const foods = new Map();          // 먹이
+  const mouse = { x: innerWidth / 2 + 100, y: innerHeight / 2 };
+  let steerMode = 'mouse', keyLeft = false, keyRight = false;
+  let boostKey = false, boostMouse = false;
+  const cam = { x: WORLD / 2, y: WORLD / 2, scale: 0.6 };
+  let sendAcc = 0, boostDropAcc = 0, hostAcc = 0, hudAcc = 0;
+  let noticeSid = null, hiddenTimer = null;
+
+  // ---------- 궤적(몸통) ----------
+  function trailAdvance(s, x, y, len) {
+    const p = s.pts, n = p.length;
+    if (n < 2) p.push({ x, y });
+    else {
+      const prev = p[n - 2], dx = x - prev.x, dy = y - prev.y;
+      if (dx * dx + dy * dy >= SP * SP) p.push({ x, y });
+      else { p[n - 1].x = x; p[n - 1].y = y; }
+    }
+    trailTrim(s, len);
+  }
+  function trailTrim(s, len) {
+    const p = s.pts;
+    let total = 0, cut = -1;
+    let minX = p[p.length - 1].x, maxX = minX, minY = p[p.length - 1].y, maxY = minY;
+    for (let i = p.length - 1; i > 0; i--) {
+      const a = p[i], b = p[i - 1];
+      const d = Math.hypot(a.x - b.x, a.y - b.y);
+      if (total + d > len) {
+        const f = d > 0 ? (len - total) / d : 0;
+        b.x = a.x + (b.x - a.x) * f;
+        b.y = a.y + (b.y - a.y) * f;
+        cut = i - 1;
+      }
+      if (b.x < minX) minX = b.x; if (b.x > maxX) maxX = b.x;
+      if (b.y < minY) minY = b.y; if (b.y > maxY) maxY = b.y;
+      if (cut >= 0) break;
+      total += d;
+    }
+    if (cut > 0) p.splice(0, cut);
+    s.minX = minX; s.maxX = maxX; s.minY = minY; s.maxY = maxY;
+  }
+  function prefill(s) {
+    s.pts = [];
+    const len = lengthOf(s.mass), n = Math.ceil(len / SP);
+    for (let k = n; k >= 0; k--) s.pts.push({ x: s.x - Math.cos(s.a) * k * SP, y: s.y - Math.sin(s.a) * k * SP });
+    trailTrim(s, len);
+  }
+  // 머리부터 꼬리 방향으로 일정 간격 점 샘플링
+  function sampleTrail(p, sp) {
+    const out = [];
+    const n = p.length;
+    if (!n) return out;
+    let px = p[n - 1].x, py = p[n - 1].y, need = sp;
+    out.push({ x: px, y: py });
+    for (let i = n - 2; i >= 0; i--) {
+      const qx = p[i].x, qy = p[i].y;
+      let dx = qx - px, dy = qy - py, d = Math.hypot(dx, dy);
+      while (d >= need && d > 0) {
+        px += (dx / d) * need; py += (dy / d) * need;
+        out.push({ x: px, y: py });
+        dx = qx - px; dy = qy - py; d = Math.hypot(dx, dy);
+        need = sp;
+      }
+      need -= d; px = qx; py = qy;
+    }
+    return out;
+  }
+
+  // ---------- 먹이 ----------
+  foodRef.on('child_added', (s) => {
+    const v = s.val();
+    if (!v || typeof v.x !== 'number') return;
+    const val = +v.v || 1;
+    foods.set(s.key, { x: v.x, y: v.y, v: val, h: +v.h || 0, r: foodRadius(val), pending: false });
+  });
+  foodRef.on('child_removed', (s) => { foods.delete(s.key); });
+
+  function spawnFood(list) {
+    if (!list.length) return;
+    const upd = {};
+    for (const f of list) {
+      upd[foodRef.push().key] = {
+        x: Math.round(clamp(f.x, 20, WORLD - 20)), y: Math.round(clamp(f.y, 20, WORLD - 20)),
+        v: Math.round(f.v * 10) / 10, h: Math.round(f.h)
+      };
+    }
+    foodRef.update(upd);
+  }
+  function eat(id, f) {
+    f.pending = true;
+    db.ref('food/' + id).transaction(
+      (cur) => (cur === null ? undefined : null),
+      (err, committed) => {
+        if (!err && committed && me && me.alive) me.mass += f.v;
+        else if (!committed) f.pending = false;
+      },
+      false
+    );
+  }
+  // 살아있는 플레이어 중 학번이 가장 작은 사람이 먹이를 보충
+  function isHost() {
+    if (!me || !me.alive) return false;
+    for (const r of remotes.values()) if (!r.stale && r.sid < me.sid) return false;
+    return true;
+  }
+  function hostTick() {
+    if (!isHost() || foods.size >= FOOD_TARGET) return;
+    const n = Math.min(120, FOOD_TARGET - foods.size), list = [];
+    for (let i = 0; i < n; i++) list.push({ x: rand(30, WORLD - 30), y: rand(30, WORLD - 30), v: 1, h: rand(0, 360) });
+    spawnFood(list);
+  }
+
+  // ---------- 다른 플레이어 ----------
+  function onPlayer(s) {
+    const sid = s.key;
+    if (sid === profile.sid) return;
+    const v = s.val();
+    if (!v || typeof v.x !== 'number') return;
+    const snap = { t: +v.t || now(), x: v.x, y: v.y, a: +v.a || 0, b: !!v.b };
+    let r = remotes.get(sid);
+    if (!r) {
+      r = { sid, name: String(v.n || sid).slice(0, 12), hue: v.h != null ? +v.h : hueOf(sid), mass: +v.m || START_MASS,
+        snaps: [snap], x: snap.x, y: snap.y, a: snap.a, b: snap.b, pts: [], stale: false };
+      prefill(r);
+      remotes.set(sid, r);
+      return;
+    }
+    r.mass = +v.m || r.mass;
+    r.name = String(v.n || sid).slice(0, 12);
+    const last = r.snaps[r.snaps.length - 1];
+    if (snap.t <= last.t) return;
+    if (Math.hypot(snap.x - last.x, snap.y - last.y) > 600) { // 순간이동(재시작) 처리
+      r.snaps = [snap]; r.x = snap.x; r.y = snap.y; r.a = snap.a; prefill(r);
+      return;
+    }
+    r.snaps.push(snap);
+    if (r.snaps.length > 20) r.snaps.shift();
+  }
+  playersRef.on('child_added', onPlayer);
+  playersRef.on('child_changed', onPlayer);
+  playersRef.on('child_removed', (s) => { remotes.delete(s.key); });
+
+  function updateRemote(r, t, dt) {
+    const S = r.snaps, last = S[S.length - 1];
+    r.stale = now() - last.t > STALE_MS;
+    if (r.stale) return;
+    let x, y, a, b;
+    if (t >= last.t) {
+      const e = Math.min(t - last.t, 300) / 1000, sp = last.b ? BOOST_SPEED : SPEED;
+      x = last.x + Math.cos(last.a) * sp * e; y = last.y + Math.sin(last.a) * sp * e; a = last.a; b = last.b;
+    } else if (t <= S[0].t) {
+      x = S[0].x; y = S[0].y; a = S[0].a; b = S[0].b;
+    } else {
+      let i = S.length - 2;
+      while (i > 0 && S[i].t > t) i--;
+      const A = S[i], B = S[i + 1], f = (t - A.t) / (B.t - A.t || 1);
+      x = A.x + (B.x - A.x) * f; y = A.y + (B.y - A.y) * f; a = A.a + angDiff(B.a, A.a) * f; b = B.b;
+    }
+    const k = Math.min(1, dt * 20);
+    r.x += (x - r.x) * k; r.y += (y - r.y) * k;
+    r.a += angDiff(a, r.a) * k; r.b = b;
+    trailAdvance(r, r.x, r.y, lengthOf(r.mass));
+  }
+
+  function hitsSnake(x, y, rad, s) {
+    const rr = radiusOf(s.mass), lim = (rad + rr) * 0.75, lim2 = lim * lim;
+    if (x < s.minX - lim || x > s.maxX + lim || y < s.minY - lim || y > s.maxY + lim) return false;
+    const p = s.pts;
+    for (let i = p.length - 1; i >= 0; i--) {
+      const dx = p[i].x - x, dy = p[i].y - y;
+      if (dx * dx + dy * dy < lim2) return true;
+    }
+    return false;
+  }
+
+  // ---------- 내 뱀 ----------
+  function spawn() {
+    if (locked) { $('deadError').textContent = '지금은 입장할 수 없습니다.'; return false; }
+    let x = WORLD / 2, y = WORLD / 2;
+    for (let tries = 0; tries < 30; tries++) {
+      x = rand(400, WORLD - 400); y = rand(400, WORLD - 400);
+      let ok = true;
+      for (const r of remotes.values()) {
+        if (!r.stale && x > r.minX - 350 && x < r.maxX + 350 && y > r.minY - 350 && y < r.maxY + 350) { ok = false; break; }
+      }
+      if (ok) break;
+    }
+    me = { sid: profile.sid, name: profile.name, hue: hueOf(profile.sid), x, y, a: rand(-Math.PI, Math.PI),
+      mass: START_MASS, b: false, alive: true, spawnAt: now(), kills: 0, pts: [] };
+    prefill(me);
+    remotes.delete(me.sid);
+    db.ref('players/' + me.sid).onDisconnect().remove();
+    listenNotices();
+    cam.x = me.x; cam.y = me.y;
+    sendAcc = SEND_INTERVAL; boostDropAcc = 0; hostAcc = 0;
+    steerMode = 'mouse';
+    $('login').classList.add('hidden');
+    $('dead').classList.add('hidden');
+    $('hud').classList.remove('hidden');
+    $('deadError').textContent = '';
+    sendState();
+    return true;
+  }
+
+  function sendState() {
+    if (!me || !me.alive) return;
+    db.ref('players/' + me.sid).set({
+      n: me.name, x: Math.round(me.x), y: Math.round(me.y), a: Math.round(angDiff(me.a, 0) * 100) / 100,
+      m: Math.round(me.mass * 10) / 10, b: me.b ? 1 : 0, h: me.hue, t: now()
+    });
+  }
+
+  function updateMe(dt) {
+    const m = me;
+    const turn = turnRateOf(m.mass) * dt;
+    if (steerMode === 'key') {
+      if (keyLeft) m.a -= turn;
+      if (keyRight) m.a += turn;
+    } else {
+      const tx = mouse.x - innerWidth / 2, ty = mouse.y - innerHeight / 2;
+      if (tx * tx + ty * ty > 64) m.a += clamp(angDiff(Math.atan2(ty, tx), m.a), -turn, turn);
+    }
+    m.b = (boostKey || boostMouse) && m.mass > MIN_BOOST_MASS;
+    const sp = m.b ? BOOST_SPEED : SPEED;
+    m.x += Math.cos(m.a) * sp * dt;
+    m.y += Math.sin(m.a) * sp * dt;
+    if (m.b) {
+      m.mass -= BOOST_COST * dt;
+      boostDropAcc += dt;
+      if (boostDropAcc >= 0.5) {
+        boostDropAcc = 0;
+        const tail = m.pts[0];
+        spawnFood([{ x: tail.x, y: tail.y, v: 1, h: m.hue }]);
+      }
+    } else boostDropAcc = 0;
+    trailAdvance(m, m.x, m.y, lengthOf(m.mass));
+
+    if (m.x < 0 || m.x > WORLD || m.y < 0 || m.y > WORLD) return die('벽에 부딪혔습니다!', null);
+    const rad = radiusOf(m.mass);
+    if (now() - m.spawnAt > SPAWN_GRACE) {
+      for (const r of remotes.values()) {
+        if (!r.stale && hitsSnake(m.x, m.y, rad, r)) return die(`${r.name}님의 몸에 부딪혔습니다!`, r);
+      }
+    }
+    const er = rad + 14;
+    for (const [id, f] of foods) {
+      if (f.pending) continue;
+      const dx = f.x - m.x, dy = f.y - m.y, lim = er + f.r;
+      if (dx * dx + dy * dy < lim * lim) eat(id, f);
+    }
+  }
+
+  function die(msg, killer) { endGame('게임 오버', msg, killer, true); }
+
+  function endGame(title, msg, killer, dropFood) {
+    if (!me || !me.alive) return;
+    me.alive = false;
+    clearTimeout(hiddenTimer);
+    const score = Math.floor(me.mass);
+    const upd = {};
+    upd['players/' + me.sid] = null;
+    if (dropFood) {
+      const count = clamp(Math.floor(me.mass / 3), 3, 60), val = Math.max(0.5, (me.mass * 0.6) / count);
+      for (let i = 0; i < count; i++) {
+        const p = me.pts[Math.floor((i / count) * me.pts.length)];
+        upd['food/' + foodRef.push().key] = {
+          x: Math.round(clamp(p.x + rand(-10, 10), 20, WORLD - 20)), y: Math.round(clamp(p.y + rand(-10, 10), 20, WORLD - 20)),
+          v: Math.round(val * 10) / 10, h: me.hue
+        };
+      }
+    }
+    db.ref().update(upd);
+    recordScore(score, killer);
+
+    $('deadTitle').textContent = title;
+    $('deadMsg').textContent = msg;
+    $('deadScore').textContent = score;
+    $('deadKills').textContent = me.kills;
+    $('deadBest').textContent = '...';
+    $('hud').classList.add('hidden');
+    $('dead').classList.remove('hidden');
+  }
+
+  function recordScore(score, killer) {
+    const sref = db.ref('scores/' + me.sid);
+    sref.update({ sid: me.sid, name: me.name, last: score, games: SV.increment(1), ts: SV.TIMESTAMP });
+    sref.child('best').transaction((cur) => Math.max(+cur || 0, score), (err, committed, snap) => {
+      $('deadBest').textContent = snap && snap.val() != null ? snap.val() : score;
+    });
+    if (killer) {
+      db.ref('scores/' + killer.sid).update({ sid: killer.sid, name: killer.name, kills: SV.increment(1) });
+      db.ref('notices/' + killer.sid).push({ by: me.name });
+    }
+  }
+
+  function listenNotices() {
+    if (noticeSid === me.sid) return;
+    if (noticeSid) db.ref('notices/' + noticeSid).off();
+    noticeSid = me.sid;
+    const ref = db.ref('notices/' + noticeSid);
+    ref.remove().then(() => {
+      ref.on('child_added', (s) => {
+        const v = s.val() || {};
+        s.ref.remove();
+        if (me && me.alive) {
+          me.kills++;
+          toast(`🎯 ${String(v.by || '').slice(0, 12)}님을 잡았습니다!`);
+        }
+      });
+    });
+  }
+
+  let toastTimer = null;
+  function toast(text) {
+    const el = $('toast');
+    el.textContent = text;
+    el.classList.add('show');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => el.classList.remove('show'), 2200);
+  }
+
+  // ---------- 로그인 ----------
+  try {
+    $('sidInput').value = localStorage.getItem('snake_sid') || '';
+    $('nameInput').value = localStorage.getItem('snake_name') || '';
+  } catch (e) { /* 저장소 사용 불가 */ }
+
+  $('loginForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const sid = $('sidInput').value.trim();
+    const name = $('nameInput').value.trim();
+    const err = $('loginError');
+    if (!/^[0-9A-Za-z]{1,12}$/.test(sid)) { err.textContent = '학번은 숫자/영문 12자 이내로 입력하세요.'; return; }
+    if (!name || name.length > 10) { err.textContent = '이름을 입력하세요. (10자 이내)'; return; }
+    if (!connected) { err.textContent = '서버에 연결 중입니다. 잠시 후 다시 시도하세요.'; return; }
+    if (locked) { updateLockText(); return; }
+    $('joinBtn').disabled = true;
+    try {
+      const snap = await db.ref('players/' + sid).get();
+      const v = snap.val();
+      if (v && now() - (+v.t || 0) < STALE_MS) { err.textContent = '이미 접속 중인 학번입니다.'; return; }
+      try { localStorage.setItem('snake_sid', sid); localStorage.setItem('snake_name', name); } catch (e2) { /* 무시 */ }
+      err.textContent = '';
+      profile = { sid, name };
+      spawn();
+    } catch (ex) {
+      err.textContent = '입장 실패: ' + ex.message;
+    } finally {
+      $('joinBtn').disabled = false;
+    }
+  });
+
+  $('retryBtn').addEventListener('click', () => { if (me && !me.alive) spawn(); });
+  $('homeBtn').addEventListener('click', () => {
+    $('dead').classList.add('hidden');
+    $('login').classList.remove('hidden');
+  });
+
+  // 명예의 전당
+  db.ref('scores').orderByChild('best').limitToLast(10).on('value', (s) => {
+    const list = [];
+    s.forEach((c) => { const v = c.val() || {}; if (v.best) list.push(v); });
+    list.sort((a, b) => b.best - a.best);
+    const ol = $('fameList');
+    ol.innerHTML = '';
+    if (!list.length) { const li = document.createElement('li'); li.className = 'muted'; li.textContent = '기록 없음'; ol.appendChild(li); }
+    for (const v of list) {
+      const li = document.createElement('li');
+      li.textContent = `${v.sid || ''} ${v.name || ''}`;
+      const sp = document.createElement('span');
+      sp.textContent = v.best;
+      li.appendChild(sp);
+      ol.appendChild(li);
+    }
+  });
+
+  // ---------- 입력 ----------
+  addEventListener('mousemove', (e) => { mouse.x = e.clientX; mouse.y = e.clientY; steerMode = 'mouse'; });
+  addEventListener('mousedown', (e) => { if (e.button === 0 && me && me.alive) boostMouse = true; });
+  addEventListener('mouseup', () => { boostMouse = false; });
+  addEventListener('blur', () => { boostMouse = boostKey = keyLeft = keyRight = false; });
+  addEventListener('contextmenu', (e) => { if (me && me.alive) e.preventDefault(); });
+  addEventListener('keydown', (e) => {
+    if (!me || !me.alive) return;
+    if (e.code === 'Space') { boostKey = true; e.preventDefault(); }
+    if (e.code === 'ArrowLeft' || e.code === 'KeyA') { keyLeft = true; steerMode = 'key'; }
+    if (e.code === 'ArrowRight' || e.code === 'KeyD') { keyRight = true; steerMode = 'key'; }
+    if (e.code === 'ArrowUp') boostKey = true;
+  });
+  addEventListener('keyup', (e) => {
+    if (e.code === 'Space' || e.code === 'ArrowUp') boostKey = false;
+    if (e.code === 'ArrowLeft' || e.code === 'KeyA') keyLeft = false;
+    if (e.code === 'ArrowRight' || e.code === 'KeyD') keyRight = false;
+  });
+  document.addEventListener('visibilitychange', () => {
+    clearTimeout(hiddenTimer);
+    if (document.hidden && me && me.alive) {
+      hiddenTimer = setTimeout(() => die('게임 화면을 벗어나 탈락했습니다.', null), HIDDEN_LIMIT);
+    }
+  });
+
+  // ---------- 그리기 ----------
+  const canvas = $('game'), ctx = canvas.getContext('2d');
+  const mini = $('minimap'), mctx = mini.getContext('2d');
+  let W = 0, H = 0, DPR = 1;
+  function resize() {
+    DPR = Math.min(window.devicePixelRatio || 1, 1.5);
+    W = innerWidth; H = innerHeight;
+    canvas.width = Math.round(W * DPR); canvas.height = Math.round(H * DPR);
+    canvas.style.width = W + 'px'; canvas.style.height = H + 'px';
+  }
+  addEventListener('resize', resize);
+  resize();
+
+  function drawSnake(s, isMe, vx0, vy0, vx1, vy1) {
+    const r = radiusOf(s.mass);
+    if (s.maxX + r < vx0 || s.minX - r > vx1 || s.maxY + r < vy0 || s.minY - r > vy1) return;
+    const pts = sampleTrail(s.pts, Math.max(4, r * 0.7));
+    const n = pts.length, h = s.hue;
+    if (s.b) {
+      ctx.fillStyle = `hsla(${h},100%,65%,0.18)`;
+      for (let i = 0; i < n; i += 2) { ctx.beginPath(); ctx.arc(pts[i].x, pts[i].y, r * 1.6, 0, Math.PI * 2); ctx.fill(); }
+    }
+    const c1 = `hsl(${h},85%,55%)`, c2 = `hsl(${h},80%,44%)`;
+    ctx.strokeStyle = 'rgba(0,0,0,0.35)';
+    ctx.lineWidth = 1.5;
+    for (let i = n - 1; i >= 0; i--) {
+      const t = i / Math.max(1, n - 1);
+      const rr = r * (1 - 0.4 * Math.max(0, (t - 0.6) / 0.4));
+      ctx.fillStyle = (i >> 1) % 2 ? c2 : c1;
+      ctx.beginPath(); ctx.arc(pts[i].x, pts[i].y, rr, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+    }
+    // 눈
+    const hx = s.x, hy = s.y, a = s.a, ca = Math.cos(a), sa = Math.sin(a);
+    for (const side of [-1, 1]) {
+      const ex = hx + ca * r * 0.35 - sa * r * 0.45 * side, ey = hy + sa * r * 0.35 + ca * r * 0.45 * side;
+      ctx.fillStyle = '#fff';
+      ctx.beginPath(); ctx.arc(ex, ey, r * 0.32, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#111';
+      ctx.beginPath(); ctx.arc(ex + ca * r * 0.12, ey + sa * r * 0.12, r * 0.17, 0, Math.PI * 2); ctx.fill();
+    }
+    // 이름
+    ctx.font = `bold ${Math.round(14 / cam.scale)}px sans-serif`;
+    ctx.textAlign = 'center';
+    ctx.fillStyle = isMe ? 'rgba(134,239,172,0.95)' : 'rgba(255,255,255,0.85)';
+    ctx.fillText(s.name, hx, hy - r - 8 / cam.scale);
+  }
+
+  function render() {
+    ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+    ctx.fillStyle = '#05070c';
+    ctx.fillRect(0, 0, W, H);
+    const s = cam.scale;
+    const vx0 = cam.x - W / 2 / s, vy0 = cam.y - H / 2 / s, vx1 = cam.x + W / 2 / s, vy1 = cam.y + H / 2 / s;
+    ctx.save();
+    ctx.translate(W / 2, H / 2);
+    ctx.scale(s, s);
+    ctx.translate(-cam.x, -cam.y);
+
+    ctx.fillStyle = '#111827';
+    ctx.fillRect(0, 0, WORLD, WORLD);
+    ctx.strokeStyle = 'rgba(255,255,255,0.045)';
+    ctx.lineWidth = 1 / s;
+    ctx.beginPath();
+    const g = 60;
+    for (let x = Math.max(0, Math.floor(vx0 / g) * g); x <= Math.min(WORLD, vx1); x += g) { ctx.moveTo(x, Math.max(0, vy0)); ctx.lineTo(x, Math.min(WORLD, vy1)); }
+    for (let y = Math.max(0, Math.floor(vy0 / g) * g); y <= Math.min(WORLD, vy1); y += g) { ctx.moveTo(Math.max(0, vx0), y); ctx.lineTo(Math.min(WORLD, vx1), y); }
+    ctx.stroke();
+    ctx.strokeStyle = '#ef4444';
+    ctx.lineWidth = 8;
+    ctx.strokeRect(-4, -4, WORLD + 8, WORLD + 8);
+
+    for (const f of foods.values()) {
+      if (f.pending || f.x < vx0 - 20 || f.x > vx1 + 20 || f.y < vy0 - 20 || f.y > vy1 + 20) continue;
+      ctx.fillStyle = `hsla(${f.h},100%,60%,0.22)`;
+      ctx.beginPath(); ctx.arc(f.x, f.y, f.r * 2, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = `hsl(${f.h},100%,65%)`;
+      ctx.beginPath(); ctx.arc(f.x, f.y, f.r, 0, Math.PI * 2); ctx.fill();
+    }
+    for (const r of remotes.values()) if (!r.stale) drawSnake(r, false, vx0, vy0, vx1, vy1);
+    if (me && me.alive) {
+      if (now() - me.spawnAt < SPAWN_GRACE) ctx.globalAlpha = 0.5 + 0.3 * Math.sin(now() / 80);
+      drawSnake(me, true, vx0, vy0, vx1, vy1);
+      ctx.globalAlpha = 1;
+    }
+    ctx.restore();
+  }
+
+  function updateHud() {
+    const alive = [];
+    for (const r of remotes.values()) if (!r.stale) alive.push(r);
+    if (me && me.alive) alive.push(me);
+    alive.sort((a, b) => b.mass - a.mass);
+    const ol = $('boardList');
+    ol.innerHTML = '';
+    alive.slice(0, 10).forEach((s) => {
+      const li = document.createElement('li');
+      li.textContent = s.name;
+      const sp = document.createElement('span');
+      sp.textContent = Math.floor(s.mass);
+      li.appendChild(sp);
+      if (me && s === me) li.className = 'me';
+      ol.appendChild(li);
+    });
+    if (me && me.alive) {
+      $('scoreText').textContent = `점수 ${Math.floor(me.mass)}`;
+      $('killText').textContent = `처치 ${me.kills}`;
+    }
+    $('onlineText').textContent = `접속 ${alive.length}명`;
+
+    const k = mini.width / WORLD;
+    mctx.clearRect(0, 0, mini.width, mini.height);
+    for (const s of alive) {
+      mctx.fillStyle = s === me ? '#4ade80' : `hsl(${s.hue},80%,60%)`;
+      const sz = s === me ? 5 : 3;
+      mctx.fillRect(s.x * k - sz / 2, s.y * k - sz / 2, sz, sz);
+    }
+  }
+
+  // ---------- 메인 루프 ----------
+  let lastT = performance.now();
+  function frame(t) {
+    const dt = Math.min(0.033, (t - lastT) / 1000);
+    lastT = t;
+    const ms = dt * 1000;
+
+    if (me && me.alive) {
+      updateMe(dt);
+      sendAcc += ms;
+      if (sendAcc >= SEND_INTERVAL && me.alive) { sendAcc = 0; sendState(); }
+      hostAcc += ms;
+      if (hostAcc >= 1000) { hostAcc = 0; hostTick(); }
+    }
+    const rt = now() - INTERP_DELAY;
+    for (const r of remotes.values()) updateRemote(r, rt, dt);
+
+    const screenK = clamp(Math.min(W, H) / 850, 0.7, 1.3);
+    let target;
+    if (me && me.alive) {
+      cam.x = me.x; cam.y = me.y;
+      target = screenK * clamp(1.05 - radiusOf(me.mass) * 0.011, 0.6, 1);
+    } else if (!me) {
+      target = screenK * 0.6;
+    } else target = cam.scale;
+    cam.scale += (target - cam.scale) * Math.min(1, dt * 3);
+
+    render();
+    hudAcc += ms;
+    if (hudAcc >= 300) { hudAcc = 0; updateHud(); }
+    requestAnimationFrame(frame);
+  }
+  requestAnimationFrame(frame);
+})();

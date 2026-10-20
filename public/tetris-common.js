@@ -4,8 +4,27 @@
   // 칸 번호: 1 I, 2 J, 3 L, 4 O, 5 S, 6 T, 7 Z, 8 방해 줄
   const COLORS = ['', '#22d3ee', '#3b82f6', '#f97316', '#facc15', '#22c55e', '#a855f7', '#ef4444', '#6b7280'];
   const BW = 10, VIS = 20;
-  const PLACE_POINTS = [10, 7, 5, 3, 2, 2]; // 7위 이하는 1점
-  const placePoints = (place) => PLACE_POINTS[place - 1] || 1;
+  // 방 설정 (관리자가 방을 만들 때 정함). 설정이 없는 예전 방은 판 수 제한 없음
+  const DEFAULT_OPTS = { games: 0, levelSec: 30, pressureFrom: 120, points: [10, 7, 5, 3, 2, 2, 1, 1, 1, 1, 1, 1] };
+  function roomOpts(room) {
+    const o = Object.assign({}, DEFAULT_OPTS, (room && room.opts) || {});
+    if (!Array.isArray(o.points) || !o.points.length) o.points = DEFAULT_OPTS.points;
+    return o;
+  }
+  // 순위표에 없는 순위는 0점
+  const placePoints = (place, points) => +(points || DEFAULT_OPTS.points)[place - 1] || 0;
+  // "1위 10 · 2위 7 · 5~6위 2 …" (같은 점수가 이어지면 묶음)
+  function pointsLine(points, t) {
+    const out = [];
+    for (let i = 0; i < points.length;) {
+      let j = i;
+      while (j + 1 < points.length && points[j + 1] === points[i]) j++;
+      const label = i === j ? t('tYouPlace', { n: i + 1 }) : t('tPlaceRange', { a: i + 1, b: j + 1 });
+      out.push(`${label} ${points[i]}`);
+      i = j + 1;
+    }
+    return out.join(' · ');
+  }
 
   function drawCell(ctx, x, y, s, c, alpha) {
     ctx.globalAlpha = alpha == null ? 1 : alpha;
@@ -83,7 +102,7 @@
   }
 
   // 누적 순위: 끝난 판(2명 이상 참가)만 점수 계산
-  function standings(allEntries, allResults, game) {
+  function standings(allEntries, allResults, game, points) {
     allEntries = allEntries || {}; allResults = allResults || {};
     const rows = new Map();
     const gids = Object.keys(allEntries).sort((a, b) => gameNo(a) - gameNo(b));
@@ -97,7 +116,7 @@
       if (Object.keys(entries).length < 2 || !isFinished(gid, game, entries, results)) continue;
       for (const p of placements(entries, results)) {
         const row = rows.get(p.sid);
-        row.pts += placePoints(p.place);
+        row.pts += placePoints(p.place, points);
         row.games++;
         row.sent += p.sent;
         if (p.place === 1) row.wins++;
@@ -108,5 +127,15 @@
       .sort((a, b) => (b.pts - a.pts) || (b.wins - a.wins) || (b.sent - a.sent) || (a.sid < b.sid ? -1 : 1));
   }
 
-  window.TCOMMON = { COLORS, BW, VIS, drawCell, drawThumb, placements, aliveCount, isFinished, standings, placePoints, gameNo };
+  // 정한 판 수를 다 했고 마지막 판도 끝났는지
+  function allDone(room, entries, results, nowMs) {
+    const o = roomOpts(room), g = room && room.game;
+    if (!o.games || !g || +g.no < o.games) return false;
+    return isFinished(g.id, g, (entries || {})[g.id], (results || {})[g.id], nowMs);
+  }
+  // 위쪽 표시용 판 번호: 판 수가 정해져 있으면 "3/8"
+  const noLabel = (room, no) => { const o = roomOpts(room); return o.games ? `${no}/${o.games}` : String(no); };
+
+  window.TCOMMON = { COLORS, BW, VIS, drawCell, drawThumb, placements, aliveCount, isFinished, standings, placePoints,
+    gameNo, roomOpts, pointsLine, allDone, noLabel };
 })();

@@ -7,7 +7,7 @@
 <link rel="icon" href="data:,">
 <link rel="stylesheet" href="fonts/fonts.css?v=20261020c">
 <link rel="stylesheet" href="common.css?v=20261020c">
-<link rel="stylesheet" href="admin.css?v=20261020d">
+<link rel="stylesheet" href="admin.css?v=20261020e">
 </head>
 <body>
 
@@ -268,6 +268,7 @@
 
     <!-- ================= 🧱 테트리스 ================= -->
     <section class="game" data-game="tetris">
+      <div id="tRulesWarn" class="panel warn hidden" data-i18n="tRulesAdmin"></div>
       <div data-view="rooms">
         <div class="split">
           <aside class="list-pane">
@@ -282,6 +283,10 @@
               <h2 data-i18n="tCreateTitle"></h2>
               <form id="tCreateForm" class="form">
                 <label><span data-i18n="tFName"></span><input id="tName" maxlength="20" required data-i18n-ph="tRoomNamePh"></label>
+                <label><span data-i18n="tFGames"></span><input id="tGames" type="number" min="1" max="30" value="8" required></label>
+                <label><span data-i18n="tFLevelSec"></span><input id="tLevelSec" type="number" min="10" max="120" value="30" required></label>
+                <label><span data-i18n="tFPressure"></span><input id="tPressure" type="number" min="0" max="600" value="120" required></label>
+                <label><span data-i18n="fPoints"></span><input id="tPoints" value="10,7,5,3,2,2,1,1,1,1,1,1" required></label>
               </form>
               <div class="row">
                 <button class="go" type="submit" form="tCreateForm" data-i18n="tCreateBtn"></button>
@@ -328,6 +333,7 @@
                     <thead><tr><th>#</th><th data-i18n="colSid"></th><th data-i18n="colName"></th><th class="num" data-i18n="tColPts"></th><th class="num" data-i18n="tColWins"></th><th class="num" data-i18n="colGames"></th><th class="num" data-i18n="tColSent"></th></tr></thead>
                     <tbody id="tStandBody"></tbody>
                   </table></div>
+                  <p id="tPointsLine" class="muted"></p>
                   <p class="muted" data-i18n="tPointsHint"></p>
                   <h2 id="tLastTitle" class="section"></h2>
                   <div class="scroll"><table>
@@ -346,17 +352,17 @@
 
 <script src="i18n.js?v=20261020c"></script>
 <script src="omok-i18n.js?v=20261020c"></script>
-<script src="tetris-i18n.js?v=20261020d"></script>
+<script src="tetris-i18n.js?v=20261020e"></script>
 <script src="admin-i18n.js?v=20261020c"></script>
 <script src="lib/firebase-app-compat.js?v=20261020c"></script>
 <script src="lib/firebase-database-compat.js?v=20261020c"></script>
 <script src="lib/firebase-auth-compat.js?v=20261020c"></script>
 <script src="api/config"></script>
 <script src="omok-core.js?v=20261020c"></script>
-<script src="tetris-common.js?v=20261020d"></script>
+<script src="tetris-common.js?v=20261020e"></script>
 <script src="admin.js?v=20261020c"></script>
 <script src="snake-admin.js?v=20261020c"></script>
 <script src="omok-admin.js?v=20261020c"></script>
-<script src="tetris-admin.js?v=20261020d"></script>
+<script src="tetris-admin.js?v=20261020e"></script>
 </body>
 </html>

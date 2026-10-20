@@ -26,8 +26,10 @@ Admin.register((() => {
   function badgeOf(code) {
     const g = rooms[code] && rooms[code].game;
     if (!g) return { text: t('tBadgeIdle'), tone: 'reg' };
-    if (code === sel ? isLive() : !g.over && now() < +g.start + 600000) return { text: t('tBadgeLive', { no: g.no }), tone: 'live' };
-    return { text: t('tBadgeDone', { no: g.no }), tone: 'wait' };
+    if (code === sel && C.allDone(rooms[code], entries, results, now())) return { text: t('bFinished'), tone: 'done' };
+    const no = C.noLabel(rooms[code], g.no);
+    if (code === sel ? isLive() : !g.over && now() < +g.start + 600000) return { text: t('tBadgeLive', { no }), tone: 'live' };
+    return { text: t('tBadgeDone', { no }), tone: 'wait' };
   }
 
   function renderList() {
@@ -78,17 +80,23 @@ Admin.register((() => {
     $('tDName').textContent = r.name || '';
     X.badge($('tBadge'), badgeOf(sel));
     const m = Object.keys(freshLobby(sel)).length;
-    $('tInfo').textContent = t('tInfoLine', { m, g: g ? g.no : 0 });
+    const o = C.roomOpts(r);
+    $('tInfo').textContent = t('tInfoLine', { m, g: g ? C.noLabel(r, g.no) : 0 }) + ' · ' +
+      t('tInfoOpts', { lv: o.levelSec }) + ' · ' + (o.pressureFrom ? t('tInfoPressure', { s: o.pressureFrom }) : t('tInfoNoPressure'));
+    const allDone = C.allDone(r, entries, results, now());
     let phase;
     if (!g) phase = t('tNextIdle', { code: sel, m });
     else {
-      const e = entries[g.id] || {}, res = results[g.id] || {};
-      if (!g.over && now() < g.start) phase = t('tNextCountdown', { no: g.no, s: Math.ceil((g.start - now()) / 1000) });
-      else if (isLive()) phase = t('tNextPlaying', { no: g.no, a: C.aliveCount(e, res), n: Object.keys(e).length });
-      else phase = t('tNextDone', { no: g.no, m });
+      const e = entries[g.id] || {}, res = results[g.id] || {}, no = C.noLabel(r, g.no);
+      if (!g.over && now() < g.start) phase = t('tNextCountdown', { no, s: Math.ceil((g.start - now()) / 1000) });
+      else if (isLive()) phase = t('tNextPlaying', { no, a: C.aliveCount(e, res), n: Object.keys(e).length });
+      else if (allDone) phase = t('tNextAllDone', { n: o.games });
+      else phase = t('tNextDone', { no, m });
     }
     $('tPhase').textContent = phase;
     $('tStopBtn').classList.toggle('hidden', !isLive());
+    $('tStartBtn').classList.toggle('hidden', allDone || (!!o.games && !!g && g.no >= o.games && isLive()));
+    $('tPointsLine').textContent = C.pointsLine(o.points, t);
     renderThumbs();
     renderStandings();
     renderLast();
@@ -134,7 +142,7 @@ Admin.register((() => {
   }
 
   // 누적 순위 / 지금(또는 가장 최근) 판 결과
-  const standRows = () => C.standings(entries, results, game())
+  const standRows = () => C.standings(entries, results, game(), C.roomOpts(room()).points)
     .map((v, i) => [i + 1, v.sid, v.name, v.pts, v.wins, v.games, v.sent]);
   function renderStandings() { fill($('tStandBody'), standRows(), [3, 4, 5, 6], true); }
   function renderLast() {
@@ -146,11 +154,20 @@ Admin.register((() => {
     const done = C.isFinished(gid, g, e, r, now()), n = Object.keys(e).length;
     $('tLastTitle').textContent = t('tLastGame', { no: C.gameNo(gid) });
     fill($('tLastBody'), C.placements(e, r).map((p) => [
-      p.dead || done ? p.place : t('tAlive'), p.name, p.sent, p.lines, done && n >= 2 ? C.placePoints(p.place) : '-'
+      p.dead || done ? p.place : t('tAlive'), p.name, p.sent, p.lines, done && n >= 2 ? C.placePoints(p.place, C.roomOpts(room()).points) : '-'
     ]), [2, 3, 4], done);
   }
 
+  // Firebase 보안 규칙에 tetris 부분이 게시됐는지: 게시됐으면 대기실 항목 지우기(빈 곳)는 허용, 아니면 거부됨
+  function checkRules() {
+    db.ref('tetris/lobby/0000/rulecheck').remove()
+      .then(() => $('tRulesWarn').classList.add('hidden'))
+      .catch((e) => { if (/permission/i.test(String(e && (e.code || e.message)))) $('tRulesWarn').classList.remove('hidden'); });
+  }
+
   function startRooms() {
+    checkRules();
+    setInterval(checkRules, 30000);
     db.ref('tetris/rooms').on('value', (s) => {
       rooms = s.val() || {};
       if (sel && !rooms[sel]) X.go('rooms', '');
@@ -167,7 +184,12 @@ Admin.register((() => {
       e.preventDefault();
       const btn = document.querySelector('button[form="tCreateForm"]');
       btn.disabled = true;
-      const r = await run('tetrisCreate', { name: $('tName').value.trim() });
+      const points = $('tPoints').value.split(/[,\s]+/).filter(Boolean).map(Number);
+      if (!points.length || points.some((p) => !Number.isInteger(p) || p < 0 || p > 100)) { btn.disabled = false; alert(t('badPoints')); return; }
+      const r = await run('tetrisCreate', {
+        name: $('tName').value.trim(), points,
+        games: Number($('tGames').value), levelSec: Number($('tLevelSec').value), pressureFrom: Number($('tPressure').value)
+      });
       btn.disabled = false;
       if (r.ok) X.go('rooms', r.code);
     });

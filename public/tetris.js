@@ -7,8 +7,8 @@
   const SPAWN_Y = TOP - 2;          // 블록은 보이는 칸 바로 위에서 나와 한 칸 내려옴
   const LOCK_DELAY = 500;           // 바닥에 닿은 뒤 굳기까지(ms)
   const MAX_RESETS = 15;            // 바닥에서 움직여 굳는 시간을 다시 늘릴 수 있는 횟수
-  const LEVEL_SEC = 30, MAX_LEVEL = 15; // 30초마다 레벨 +1 (떨어지는 속도 증가)
-  const PRESSURE_FROM = 120, PRESSURE_EVERY = 8; // 2분부터 8초마다 아래에서 방해 줄 1줄
+  const MAX_LEVEL = 15;             // 방 설정(levelSec)마다 레벨 +1 (떨어지는 속도 증가)
+  const PRESSURE_EVERY = 8;         // 방 설정(pressureFrom)부터 8초마다 아래에서 방해 줄 1줄 (0이면 없음)
   const ENTRY_GRACE = 2000;         // 시작 후 이 시간 안에 방에 있으면 참가 (보안 규칙은 3초)
   const STALE_MS = 6000, BEAT_MS = 2000;
   const HIDDEN_LIMIT = 3000;        // 다른 창으로 나가 있으면 탈락까지 시간(ms)
@@ -127,6 +127,8 @@
   let seenKey = null;                 // 마지막으로 본 판 (id@start)
   let subs = [], beatTimer = null, hiddenTimer = null;
   let loginMsg = null;
+  let rulesErr = false;               // Firebase 보안 규칙이 아직 게시되지 않아 쓰기가 막힘
+  const denied = (e) => /permission/i.test(String((e && (e.code || e.message)) || ''));
   let connected = false;
 
   function setLoginError(key, params) { loginMsg = key ? { key, params } : null; renderTexts(); }
@@ -225,7 +227,9 @@
     const lref = db.ref(`tetris/lobby/${rid}/${sid}`);
     lref.onDisconnect().remove();
     db.ref(`tetris/boards/${rid}/${sid}`).onDisconnect().remove();
-    const beat = () => lref.set({ n: profile.name, t: SV.TIMESTAMP }).catch(() => {});
+    const beat = () => lref.set({ n: profile.name, t: SV.TIMESTAMP })
+      .then(() => { if (rulesErr) { rulesErr = false; renderStatus(); } })
+      .catch((e) => { if (denied(e)) { rulesErr = true; renderStatus(); } });
     beat();
     beatTimer = setInterval(beat, BEAT_MS);
 
@@ -293,7 +297,11 @@
       resetInput();
       publish(true);
       renderStatus();
-    }).catch(() => { renderStatus(); }); // 늦게 들어오면 보안 규칙에 막힘 → 이번 판은 관전
+    }).catch((e) => {
+      // 늦게 들어오면 보안 규칙에 막힘 → 이번 판은 관전. 시간 안인데 막혔으면 규칙이 게시되지 않은 것
+      if (denied(e) && now() < game.start) rulesErr = true;
+      renderStatus();
+    });
   }
 
   function newGame(game) {
@@ -303,7 +311,8 @@
       alive: true, started: false, endKey: null, endAt: 0,
       lastRot: false, lastKick: 0, b2b: false, combo: -1,
       incoming: [], sent: 0, lines: 0, pieces: 0,
-      lockT: 0, resets: 0, lowY: 0, fallAcc: 0, level: 1, nextPressure: PRESSURE_FROM,
+      lockT: 0, resets: 0, lowY: 0, fallAcc: 0, level: 1,
+      levelSec: C.roomOpts(room).levelSec, nextPressure: C.roomOpts(room).pressureFrom || Infinity,
       action: null, lastPub: 0, pubTimer: null
     };
     fillQueue(g);
@@ -777,14 +786,18 @@
     const game = curGame();
     const e = game ? entries[game.id] || {} : {}, r = game ? results[game.id] || {} : {};
     const finished = !game || C.isFinished(game.id, game, e, r, now());
+    const no = game ? C.noLabel(room, game.no) : '';
+    const allDone = C.allDone(room, entries, results, now());
     // 위쪽 막대
     let st = t('tStIdle');
-    if (game && now() < game.start && !game.over) st = t('tStCountdown', { no: game.no });
-    else if (game && !finished) st = t('tStPlaying', { no: game.no, a: C.aliveCount(e, r), n: Object.keys(e).length });
-    else if (game) st = t('tStDone', { no: game.no });
+    if (game && now() < game.start && !game.over) st = t('tStCountdown', { no });
+    else if (game && !finished) st = t('tStPlaying', { no, a: C.aliveCount(e, r), n: Object.keys(e).length });
+    else if (allDone) st = t('tStAllDone');
+    else if (game) st = t('tStDone', { no });
     $('statusText').textContent = st;
     // 필드 위 안내
-    if (G && game && G.gid === game.id) {
+    if (rulesErr) setMsg(t('tRulesBig'), t('tRulesSub'));
+    else if (G && game && G.gid === game.id) {
       if (G.alive && !G.started) {
         const s = Math.ceil((G.start - now()) / 1000);
         setMsg(s > 0 ? String(s) : 'GO!', t('tGetReady'));
@@ -795,11 +808,12 @@
         const big = mine && mine.win ? t('tWinner') : place ? t('tYouPlace', { n: place }) : t('tKO');
         const n = Object.keys(e).length;
         let small = G.endKey ? t(G.endKey) : '';
-        if (finished) small = (n >= 2 && place ? t('tPointsGot', { n: C.placePoints(place) }) + ' · ' : '') + t('tWaitNext');
+        if (finished) small = (n >= 2 && place ? t('tPointsGot', { n: C.placePoints(place, C.roomOpts(room).points) }) + ' · ' : '') + t(allDone ? 'tAllDoneSub' : 'tWaitNext');
         else small = (small ? small + ' · ' : '') + t('tStillPlaying');
         setMsg(big, small);
       }
     } else if (game && !finished) setMsg(t('tSpectating'), t('tSpectatingSub'));
+    else if (allDone) setMsg(t('tStAllDone'), t('tAllDoneSub'));
     else setMsg(t('tWaiting'), t('tWaitingSub'));
   }
   function renderStats() {
@@ -881,7 +895,9 @@
     });
   }
   function renderStandings() {
-    const rows = C.standings(entries, results, curGame());
+    const opts = C.roomOpts(room);
+    $('pointsLine').textContent = C.pointsLine(opts.points, t);
+    const rows = C.standings(entries, results, curGame(), opts.points);
     const tb = $('standBody');
     tb.innerHTML = '';
     if (!rows.length) {
@@ -907,7 +923,7 @@
   let lastT = performance.now(), slowAcc = 0, pressureShown = null;
   function step(dt) {
     const el = (now() - G.start) / 1000;
-    G.level = Math.min(MAX_LEVEL, 1 + Math.floor(el / LEVEL_SEC));
+    G.level = Math.min(MAX_LEVEL, 1 + Math.floor(el / G.levelSec));
     if (el >= G.nextPressure) {
       G.incoming.push({ l: 1, h: Math.floor(Math.random() * BW) });
       G.nextPressure += PRESSURE_EVERY;

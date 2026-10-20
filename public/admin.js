@@ -15,23 +15,32 @@
     return;
   }
 
-  let password = '';
+  if (!cfg.apiKey || !cfg.projectId) {
+    setGate('noAuthConfig');
+    $('googleBtn').disabled = true;
+    return;
+  }
+
+  // 구글 로그인 (Firebase Authentication). 관리자 이메일인지는 서버가 확인
+  firebase.initializeApp(cfg);
+  const emu = new URLSearchParams(location.search).has('emu');
+  const auth = firebase.auth();
+  if (emu) auth.useEmulator('http://127.0.0.1:9099', { disableWarnings: true });
 
   // 서버 오류는 코드로 받아서 현재 언어로 표시
   const errText = (r) => t('err_' + (r.code || 'server')) + (r.detail ? ` (${r.detail})` : '');
 
   async function adminAction(action, extra) {
     try {
+      const user = auth.currentUser;
+      if (!user) return { ok: false, code: 'bad_login' };
+      const idToken = await user.getIdToken();
       const res = await fetch('api/admin', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify(Object.assign({ password, action }, extra || {}))
+        body: JSON.stringify(Object.assign({ idToken, action }, extra || {}))
       });
-      const data = await res.json().catch(() => ({ ok: false, code: 'server', detail: String(res.status) }));
-      if (res.status === 401) {
-        try { sessionStorage.removeItem('snake_admin_pw'); } catch (e) { /* 무시 */ }
-      }
-      return data;
+      return await res.json().catch(() => ({ ok: false, code: 'server', detail: String(res.status) }));
     } catch (e) {
       return { ok: false, code: 'network', detail: e.message };
     }
@@ -42,25 +51,38 @@
     return r;
   }
 
-  async function login(pw) {
-    password = pw;
+  let started = false;
+  auth.onAuthStateChanged(async (user) => {
+    $('gateSignOut').classList.toggle('hidden', !user);
+    if (!user) {
+      $('main').classList.add('hidden');
+      $('gate').classList.remove('hidden');
+      if (started) location.reload(); // 로그아웃하면 실시간 연결도 정리
+      return;
+    }
+    setGate('checking');
     const r = await adminAction('check');
     if (!r.ok) { setGate('failed', { msg: errText(r) }); return; }
-    try { sessionStorage.setItem('snake_admin_pw', pw); } catch (e) { /* 무시 */ }
     setGate(null);
+    $('whoText').textContent = user.email;
     $('gate').classList.add('hidden');
     $('main').classList.remove('hidden');
-    start();
-  }
-  $('gateForm').addEventListener('submit', (e) => {
-    e.preventDefault();
-    setGate('checking');
-    login($('pw').value);
+    if (!started) { started = true; start(); }
   });
-  try {
-    const saved = sessionStorage.getItem('snake_admin_pw');
-    if (saved) login(saved);
-  } catch (e) { /* 무시 */ }
+
+  $('googleBtn').onclick = async () => {
+    const provider = new firebase.auth.GoogleAuthProvider();
+    provider.setCustomParameters({ prompt: 'select_account' });
+    try {
+      await auth.signInWithPopup(provider);
+    } catch (e) {
+      if (e.code === 'auth/popup-blocked') return auth.signInWithRedirect(provider);
+      if (e.code === 'auth/popup-closed-by-user' || e.code === 'auth/cancelled-popup-request') return;
+      setGate(e.code === 'auth/unauthorized-domain' ? 'authDomainErr' : 'failed', { msg: e.code || e.message, host: location.hostname });
+    }
+  };
+  $('gateSignOut').onclick = () => auth.signOut();
+  $('signOutBtn').onclick = () => auth.signOut();
 
   // 탭
   const TABS = { room: 'tabRoom', omok: 'tabOmok', practice: 'tabPractice' };
@@ -76,9 +98,8 @@
   const now = () => Date.now() + serverOffset;
 
   function start() {
-    firebase.initializeApp(cfg);
     db = firebase.database();
-    if (new URLSearchParams(location.search).has('emu')) db.useEmulator('127.0.0.1', 9000);
+    if (emu) db.useEmulator('127.0.0.1', 9000);
     db.ref('.info/serverTimeOffset').on('value', (s) => { serverOffset = s.val() || 0; });
     startRooms();
     startPractice();

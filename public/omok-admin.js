@@ -81,7 +81,7 @@ addEventListener('adminstart', (ev) => {
   }
 
   const nameOf = (sid) => (L.members[sid] && L.members[sid].name) || sid;
-  const studentUrl = () => `${location.origin}${location.pathname.replace(/admin(\.html)?$/, '')}omok?code=${sel}`;
+  const studentUrl = () => new URL('omok?code=' + sel, location.href).href;
   const unfinished = (r) => Object.values(L.games['r' + r] || {}).filter((g) => g && !g.res).length;
 
   function render() {

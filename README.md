@@ -1,20 +1,29 @@
-# 🐍 SNAKE.IO (컴퓨터실 대회용)
+# 🎮 컴퓨터실 대회용 게임 (뱀 게임 + 오목 리그)
 
-Firebase Realtime Database + Cloudflare Pages로 동작하는 멀티플레이 뱀 게임입니다.
+Firebase Realtime Database + Cloudflare Pages로 동작합니다.
+
+| 주소 | 화면 |
+|---|---|
+| `game.kakainfo.com/` | 관리자 (Google 계정 로그인) |
+| `game.kakainfo.com/snake` | 🐍 뱀 게임 (학생) |
+| `game.kakainfo.com/omok` | ⚫ 오목 리그 (학생) |
+| `game.kakainfo.com/board?code=1234` | 뱀 게임 전광판 (프로젝터) |
 
 ```
-public/                 정적 파일 (게임, 관리자 페이지, Firebase SDK, IBM Plex 글꼴)
+public/                 정적 파일 (index.html=관리자, snake.html=뱀 게임, omok.html=오목, Firebase SDK, 글꼴)
 public/i18n.js          번역 (한국어 / English / 中文 / Русский)
 functions/api/config.js  GET  /api/config  → 환경변수의 Firebase 주소를 브라우저에 전달
-functions/api/admin.js   POST /api/admin   → 관리자 비밀번호 확인 + 게임방 생성/라운드 시작·종료/승점 집계 + 오목 리그 관리
+functions/api/admin.js   POST /api/admin   → 관리자 구글 로그인 확인 + 게임방 생성/라운드 시작·종료/승점 집계 + 오목 리그 관리
 functions/api/omok.js    POST /api/omok    → 오목 리그 학생 등록, 수 두기, 기권, 시간초과 처리
-server/                 Cloudflare 함수 공용 코드 (Firebase 호출, 오목 리그 규칙·대진 생성)
+server/                 Cloudflare 함수 공용 코드 (Firebase 호출, 구글 토큰 검증, 오목 리그 규칙·대진 생성)
 public/board.html       전광판 (프로젝터용, /board?code=1234)
 public/omok.html        오목 리그 학생 화면 (/omok)
+public/_redirects       예전 관리자 주소 /admin → /
 database.rules.json     Firebase 보안 규칙 (콘솔에 붙여넣기)
 ```
 
-- 관리자 비밀번호와 Firebase 비밀키는 **Cloudflare 비밀(Secret)에만** 저장되고 브라우저로 내려가지 않습니다.
+- 관리자는 **Google 계정**으로 로그인하고, 서버가 구글 토큰을 검증한 뒤 `ADMIN_EMAILS`에 있는 이메일만 허용합니다.
+- Firebase 비밀키는 **Cloudflare 비밀(Secret)에만** 저장되고 브라우저로 내려가지 않습니다.
 - 라운드 시작/종료, 기록 초기화, 먹이 초기화는 서버(Cloudflare)만 할 수 있습니다. 학생이 개발자 도구로 직접 하려 해도 보안 규칙에 막힙니다.
 
 ## 설정 순서
@@ -36,7 +45,15 @@ database.rules.json     Firebase 보안 규칙 (콘솔에 붙여넣기)
 2. **데이터베이스 비밀번호(Database secrets)** → 비밀번호 **표시** → 복사
    → 이것이 `FIREBASE_DB_SECRET` (절대 공개 금지)
 
-### 4. Cloudflare Pages 배포
+### 4. 관리자 Google 로그인 켜기 (Firebase Authentication)
+1. 왼쪽 메뉴 **빌드 → Authentication → 시작하기 → 로그인 방법** 탭 → **Google** → **사용 설정** → 지원 이메일 선택 → 저장
+2. **Authentication → 설정 → 승인된 도메인** → **도메인 추가**: `game.kakainfo.com` (그리고 `<프로젝트명>.pages.dev`)
+3. ⚙️ **프로젝트 설정 → 일반** 탭
+   - **프로젝트 ID** → 이것이 `FIREBASE_PROJECT_ID`
+   - **웹 API 키** → 이것이 `FIREBASE_API_KEY` (공개돼도 되는 값)
+   - 웹 API 키가 안 보이면 같은 화면 아래 **내 앱 → 웹 앱(</>) 추가** 후 나오는 `apiKey` 값
+
+### 5. Cloudflare Pages 배포
 1. https://dash.cloudflare.com → **Workers 및 Pages → 만들기 → Pages → Git에 연결**
    (Workers 화면이 먼저 나오면 아래쪽 "Pages로 배포" 링크를 누르세요)
 2. 이 저장소(`snakeiogwansan`) 선택
@@ -51,24 +68,34 @@ database.rules.json     Firebase 보안 규칙 (콘솔에 붙여넣기)
    |---|---|---|
    | `FIREBASE_DATABASE_URL` | 텍스트 | 2-5에서 복사한 주소 |
    | `FIREBASE_DB_SECRET` | **비밀(암호화)** | 3에서 복사한 비밀키 |
-   | `ADMIN_PASSWORD` | **비밀(암호화)** | 관리자 비밀번호 (직접 정하기) |
+   | `FIREBASE_PROJECT_ID` | 텍스트 | 4-3의 프로젝트 ID |
+   | `FIREBASE_API_KEY` | 텍스트 | 4-3의 웹 API 키 |
+   | `ADMIN_EMAILS` | 텍스트 | 관리자 구글 이메일, 쉼표로 구분 (예: `me@gmail.com, t2@school.kr`). `@school.kr`처럼 쓰면 그 도메인 전체 허용 |
 
-5. 배포 완료 후 주소:
-   - 게임: `https://<프로젝트명>.pages.dev/`
-   - 관리자: `https://<프로젝트명>.pages.dev/admin`
+   (예전에 쓰던 `ADMIN_PASSWORD`는 더 이상 쓰지 않으니 지워도 됩니다.)
+
+5. 배포 완료 후 `https://<프로젝트명>.pages.dev/`(관리자), `/snake`, `/omok`이 열리는지 확인
+
+### 6. game.kakainfo.com 연결
+1. Cloudflare Pages 프로젝트 → **사용자 지정 도메인 → 사용자 지정 도메인 설정** → `game.kakainfo.com` 입력 → 계속
+2. `kakainfo.com`의 DNS가 Cloudflare에 있으면 자동으로 연결됩니다.
+   다른 곳(가비아, 후이즈 등)에서 DNS를 관리하면, 거기서 **CNAME** 레코드를 추가하세요:
+   이름 `game` → 값 `<프로젝트명>.pages.dev`
+3. 상태가 **활성**이 되면 (보통 몇 분, 길면 하루) `https://game.kakainfo.com` 접속
+4. Firebase **승인된 도메인**에 `game.kakainfo.com`이 들어 있는지 다시 확인 (없으면 구글 로그인 창에서 오류)
 
 > 환경 변수를 배포 **후에** 추가/수정했다면 **배포 → 최신 배포 ⋯ → 배포 다시 시도**를 해야 적용됩니다.
 
-### 5. 대회 전 꼭 확인
-- 학교 PC에서 게임 주소 접속 → 로그인 화면에 `🟢 서버 연결됨`이 뜨는지 확인 (`pages.dev`, `firebasedatabase.app`이 학교망에서 열리는지)
-- 관리자 페이지에서 로그인 → **라운드 종료/시작** 버튼이 동작하는지 확인 (실패하면 오류 메시지에 원인이 나옵니다)
+### 7. 대회 전 꼭 확인
+- 학교 PC에서 `/snake`, `/omok` 접속 → 로그인 화면에 `🟢 서버 연결됨`이 뜨는지 확인 (`pages.dev`, `firebasedatabase.app`이 학교망에서 열리는지)
+- 관리자 페이지(`/`)에서 구글 로그인 → **라운드 종료/시작** 버튼이 동작하는지 확인 (실패하면 오류 메시지에 원인이 나옵니다)
 
 ## 대회 진행 방법 (게임방 + 라운드)
-1. 관리자 페이지(`/admin`) → **대회 관리** 탭 → **새 게임 만들기**
+1. 관리자 페이지(`/`) → **대회 관리** 탭 → **새 게임 만들기**
    - 게임 이름, 라운드 수, 라운드 시간(분), 순위별 승점(기본 F1: 25·18·15·12·10·8·6·4·2·1), 처치 보너스(기본 0)
    - 만들면 **4자리 입장 코드**가 나옵니다.
 2. **📺 전광판 열기** → 프로젝터에 띄우기 (입장 코드, 남은 시간, 실시간 순위, 누적 순위, 최종 시상대)
-3. 학생: 게임 주소 접속 → **게임 코드 + 학번 + 이름** → **대회 입장** → 대기실
+3. 학생: `/snake` 접속 → **게임 코드 + 학번 + 이름** → **대회 입장** → 대기실
 4. 관리자: **▶ 라운드 1 시작** → 학생 화면에 3·2·1 카운트다운 후 동시에 시작
    - 라운드 중 죽으면 바로 다시 시작 가능, **그 라운드 최고 크기**가 기록됩니다.
    - 늦게 들어온 학생은 진행 중인 라운드에 바로 참가 (지난 라운드는 0점)

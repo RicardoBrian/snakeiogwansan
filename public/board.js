@@ -86,7 +86,7 @@
     }
     const meta = S.meta, st = S.state || { phase: 'lobby', round: 0 }, tt = now();
     $('code').textContent = code;
-    $('url').textContent = location.host;
+    $('url').textContent = location.host + '/snake';
     $('name').textContent = meta.name;
 
     let phaseKey = 'phLobby', timer = '', low = false;

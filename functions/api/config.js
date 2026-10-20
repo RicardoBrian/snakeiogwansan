@@ -4,6 +4,8 @@ export function onRequestGet({ env }) {
   const cfg = { databaseURL: env.FIREBASE_DATABASE_URL || '' };
   if (env.FIREBASE_API_KEY) cfg.apiKey = env.FIREBASE_API_KEY;
   if (env.FIREBASE_PROJECT_ID) cfg.projectId = env.FIREBASE_PROJECT_ID;
+  // 관리자 구글 로그인용 (Firebase Authentication)
+  if (env.FIREBASE_AUTH_DOMAIN || env.FIREBASE_PROJECT_ID) cfg.authDomain = env.FIREBASE_AUTH_DOMAIN || `${env.FIREBASE_PROJECT_ID}.firebaseapp.com`;
   return new Response(`window.FIREBASE_CONFIG = ${JSON.stringify(cfg)};\n`, {
     headers: { 'content-type': 'application/javascript; charset=utf-8', 'cache-control': 'no-store' }
   });

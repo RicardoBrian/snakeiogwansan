@@ -17,14 +17,6 @@ export async function sha256Hex(text) {
   return Array.from(new Uint8Array(buf), (b) => b.toString(16).padStart(2, '0')).join('');
 }
 
-// 길이가 같아지도록 해시끼리 비교 (시간차 공격 방지)
-export async function sameText(a, b) {
-  const [x, y] = await Promise.all([sha256Hex(a), sha256Hex(b)]);
-  let diff = 0;
-  for (let i = 0; i < x.length; i++) diff |= x.charCodeAt(i) ^ y.charCodeAt(i);
-  return diff === 0;
-}
-
 function dbUrl(env, path) {
   const u = new URL(env.FIREBASE_DATABASE_URL);
   u.pathname = u.pathname.replace(/\/$/, '') + '/' + path + '.json';

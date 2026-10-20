@@ -1,8 +1,10 @@
 // POST /api/admin — 관리자 작업 (오류는 code 로 돌려주고, 화면 문구는 브라우저에서 언어별로 표시)
-// 비밀번호(ADMIN_PASSWORD)는 서버에서만 확인하고, 실제 쓰기는 Firebase 비밀키(FIREBASE_DB_SECRET)로 수행합니다.
+// 관리자는 구글 계정으로 로그인하고, 서버가 구글 ID 토큰과 허용 이메일(ADMIN_EMAILS)을 확인합니다.
+// 실제 쓰기는 Firebase 비밀키(FIREBASE_DB_SECRET)로 수행합니다.
 // 보안 규칙상 settings, 게임방 설정/진행 상태/순위, 오목 리그, 전체 삭제는 비밀키로만 가능합니다.
 
-import { ApiError, envReady, fb, int, json, roomCode, sameText } from '../../server/firebase.js';
+import { ApiError, envReady, fb, int, json, roomCode } from '../../server/firebase.js';
+import { isAdminEmail, verifyIdToken } from '../../server/auth.js';
 import { OMOK_ADMIN } from '../../server/omok.js';
 
 const COUNTDOWN_MS = 4000;      // 라운드 시작 전 카운트다운
@@ -145,15 +147,21 @@ const ACTIONS = {
 };
 
 export async function onRequestPost({ request, env }) {
-  if (!env.ADMIN_PASSWORD || !envReady(env)) {
+  if (!env.ADMIN_EMAILS || !env.FIREBASE_PROJECT_ID || !envReady(env)) {
     return json({ ok: false, code: 'env_missing' }, 500);
   }
   let body;
   try { body = await request.json(); } catch (e) { return json({ ok: false, code: 'bad_request' }, 400); }
 
-  if (!(await sameText(String(body.password || ''), String(env.ADMIN_PASSWORD)))) {
-    await new Promise((r) => setTimeout(r, 700)); // 무작위 대입 속도 늦추기
-    return json({ ok: false, code: 'bad_password' }, 401);
+  let user;
+  try {
+    user = await verifyIdToken(body.idToken, env.FIREBASE_PROJECT_ID);
+  } catch (e) {
+    if (e instanceof ApiError) return json({ ok: false, code: e.code, detail: e.detail }, e.status);
+    return json({ ok: false, code: 'bad_login' }, 401);
+  }
+  if (!isAdminEmail(user.email, env.ADMIN_EMAILS)) {
+    return json({ ok: false, code: 'not_admin', detail: user.email }, 403);
   }
   const fn = Object.prototype.hasOwnProperty.call(ACTIONS, body.action) ? ACTIONS[body.action] : null;
   if (!fn) return json({ ok: false, code: 'unknown_action' }, 400);

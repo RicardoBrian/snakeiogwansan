@@ -130,12 +130,32 @@
   }
   const nameOf = (sid) => (L.members[sid] && L.members[sid].name) || sid;
 
+  // ===== 관전 =====
+  // 내 대국이 끝났거나 쉬는 차례면 같은 라운드의 다른 대국을 실시간으로 볼 수 있음 (내 대국 중에는 불가)
+  let watchMid = null, watchRoundSeen = 0;
+  function canWatch() {
+    const ph = L.state.phase;
+    if (!['round', 'results', 'finished'].includes(ph) || !L.state.round) return false;
+    const mg = myGame();
+    return !mg || !!mg.g.res || ph !== 'round';
+  }
+  // 화면에 보여 줄 대국: 관전 중이면 그 대국, 아니면 내 대국
+  function shownGame() {
+    const st = L.state || {};
+    const g = watchMid && L.games['r' + st.round] && L.games['r' + st.round][watchMid];
+    if (g && canWatch()) return { mid: watchMid, g, round: st.round, watching: true };
+    return myGame();
+  }
+
   let pending = null, hover = null, lastClaim = 0;
 
   function render() {
     if (!L || !L.meta || !L.state) return;
     const st = L.state, meta = L.meta, n = meta.rounds || 0;
     $('lgName').textContent = meta.name || '';
+    // 새 라운드가 시작되면 관전을 끝내고 내 대국판으로
+    if (st.round !== watchRoundSeen) { watchRoundSeen = st.round; watchMid = null; }
+    if (watchMid && !canWatch()) watchMid = null;
     const mg = (st.phase === 'round' || st.phase === 'results' || st.phase === 'finished') ? myGame() : null;
     const table = C.standings(meta, L.members, L.games);
     const mine = table.find((r) => r.sid === me.sid);
@@ -159,9 +179,11 @@
     $('statusText').textContent = msg;
     $('statusText').className = 'status ' + cls;
 
-    // 대국판
-    $('matchBox').classList.toggle('hidden', !mg);
-    if (mg) renderMatch(mg);
+    // 대국판 (관전 중이면 관전하는 대국)
+    const sg = shownGame();
+    $('matchBox').classList.toggle('hidden', !sg);
+    if (sg) renderMatch(sg);
+    renderWatch();
 
     renderStandings(table);
     renderMyGames();
@@ -171,20 +193,26 @@
   function renderMatch(mg) {
     const g = mg.g;
     const myColor = g.b === me.sid ? 'b' : 'w';
+    $('watchBar').classList.toggle('hidden', !mg.watching);
+    if (mg.watching) {
+      $('watchText').textContent = t('oWatching', { b: nameOf(g.b), w: nameOf(g.w) });
+      $('backBtn').classList.toggle('hidden', !myGame());
+    }
     for (const [id, c] of [['pB', 'b'], ['pW', 'w']]) {
       const el = $(id);
       const sid = c === 'b' ? g.b : g.w;
       el.querySelector('.pl-name').textContent = nameOf(sid) + (sid === me.sid ? ` (${t('oMe')})` : '');
       el.classList.toggle('me', sid === me.sid);
     }
-    $('resignBtn').classList.toggle('hidden', !!g.res || L.state.phase !== 'round');
+    $('resignBtn').classList.toggle('hidden', !!mg.watching || !!g.res || L.state.phase !== 'round');
     const touch = matchMedia('(pointer: coarse)').matches;
-    $('hintText').textContent = t(touch ? 'oHintTouch' : 'oHintMouse', { s: L.meta.moveTime || 30 });
+    $('hintText').textContent = mg.watching ? '' : t(touch ? 'oHintTouch' : 'oHintMouse', { s: L.meta.moveTime || 30 });
     if (pending != null && C.moves(g).includes(pending)) pending = null;
     drawBoard(mg, myColor);
   }
 
   function drawBoard(mg, myColor) {
+    if (mg.watching) { C.drawBoard($('boardCv'), mg.g); return; }
     const canPlay = isMyTurn(mg);
     C.drawBoard($('boardCv'), mg.g, {
       hover: canPlay ? hover : null, hoverColor: myColor,
@@ -193,7 +221,7 @@
   }
 
   function isMyTurn(mg) {
-    if (!mg || mg.g.res || L.state.phase !== 'round' || now() < L.state.startAt) return false;
+    if (!mg || mg.watching || mg.g.res || L.state.phase !== 'round' || now() < L.state.startAt) return false;
     const myColor = mg.g.b === me.sid ? 'b' : 'w';
     return C.turn(mg.g) === myColor && pending == null;
   }
@@ -209,7 +237,7 @@
       $('countdownSub').textContent = t('oStCountdown', { r: st.round });
       $('countdownNum').textContent = Math.ceil(cd / 1000);
     }
-    const mg = st.phase === 'round' || st.phase === 'results' ? myGame() : null;
+    const mg = st.phase === 'round' || st.phase === 'results' ? shownGame() : null;
     if (!mg) return;
     const g = mg.g, turn = C.turn(g), limit = (L.meta.moveTime || 30) * 1000;
     const live = !g.res && st.phase === 'round';
@@ -224,11 +252,14 @@
     const myColor = g.b === me.sid ? 'b' : 'w';
     const tt = $('turnText');
     if (live && now() >= st.startAt) {
-      tt.textContent = t(turn === myColor ? 'oYourTurn' : 'oTheirTurn');
-      tt.className = turn === myColor ? 'mine' : '';
+      if (mg.watching) { tt.textContent = t('oWatchTurn', { name: nameOf(turn === 'b' ? g.b : g.w) }); tt.className = ''; }
+      else {
+        tt.textContent = t(turn === myColor ? 'oYourTurn' : 'oTheirTurn');
+        tt.className = turn === myColor ? 'mine' : '';
+      }
     } else tt.textContent = '';
     // 차례인 쪽 시간이 지나면 서버에 시간패 처리 요청 (양쪽 모두 요청할 수 있음, 서버가 시각 확인)
-    if (live && left < -GRACE_MS - 300 && Date.now() - lastClaim > 3000) {
+    if (!mg.watching && live && left < -GRACE_MS - 300 && Date.now() - lastClaim > 3000) {
       lastClaim = Date.now();
       api('timeout', { code: me.code, sid: me.sid, token: me.token, mid: mg.mid });
     }
@@ -241,12 +272,12 @@
   cv.addEventListener('pointermove', (e) => {
     if (e.pointerType !== 'mouse' || !L) return;
     const p = C.posAt(cv, e.clientX, e.clientY);
-    if (p !== hover) { hover = p; const mg = myGame(); if (mg) drawBoard(mg, mg.g.b === me.sid ? 'b' : 'w'); }
+    if (p !== hover) { hover = p; const mg = shownGame(); if (mg) drawBoard(mg, mg.g.b === me.sid ? 'b' : 'w'); }
   });
   cv.addEventListener('pointerleave', () => { if (hover != null && L) { hover = null; render(); } });
   cv.addEventListener('pointerup', (e) => {
     if (!L) return;
-    const mg = myGame();
+    const mg = shownGame();
     if (!mg || !isMyTurn(mg)) return;
     const p = C.posAt(cv, e.clientX, e.clientY);
     if (p == null || C.moves(mg.g).includes(p)) return;
@@ -282,6 +313,36 @@
     const r = await api('resign', { code: me.code, sid: me.sid, token: me.token, mid: mg.mid });
     if (!r.ok) toast(t(...errKey(r)));
   };
+
+  // 관전할 수 있는 대국 목록 (같은 라운드)
+  function renderWatch() {
+    const st = L.state, ok = canWatch();
+    $('watchBox').classList.toggle('hidden', !ok);
+    if (!ok) return;
+    $('watchTitle').textContent = t('oWatchTitle', { r: st.round });
+    const tb = $('watchTbl');
+    tb.innerHTML = '';
+    const games = Object.entries(L.games['r' + st.round] || {})
+      .filter(([, g]) => g && g.b !== me.sid && g.w !== me.sid)
+      .sort((a, b) => (!!a[1].res - !!b[1].res) || Number(a[0].slice(1)) - Number(b[0].slice(1))); // 진행 중인 대국 먼저
+    for (const [mid, g] of games) {
+      const tr = document.createElement('tr');
+      if (mid === watchMid) tr.className = 'on';
+      const state = g.res ? t(g.res === 'b' ? 'oResB' : g.res === 'w' ? 'oResW' : 'oResD') : t('oMovesN', { n: C.moves(g).length });
+      [['⚫ ' + nameOf(g.b), ''], ['vs', 'vs'], ['⚪ ' + nameOf(g.w), ''], [state, g.res ? 'muted' : 'r-w']].forEach(([c, cls]) => {
+        const td = document.createElement('td'); td.textContent = c; if (cls) td.className = cls; tr.appendChild(td);
+      });
+      const td = document.createElement('td');
+      const b = document.createElement('button');
+      b.type = 'button'; b.className = 'ghost'; b.textContent = t('oWatch');
+      b.onclick = () => { watchMid = mid; hover = null; render(); $('matchBox').scrollIntoView({ behavior: 'smooth', block: 'start' }); };
+      td.appendChild(b);
+      tr.appendChild(td);
+      tb.appendChild(tr);
+    }
+    if (!games.length) tb.appendChild(row('td', [t('oNoWatch')], []));
+  }
+  $('backBtn').onclick = () => { watchMid = null; render(); };
 
   // ===== 표 =====
   function renderStandings(table) {

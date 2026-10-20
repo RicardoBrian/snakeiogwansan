@@ -1,59 +1,13 @@
 // POST /api/admin — 관리자 작업 (오류는 code 로 돌려주고, 화면 문구는 브라우저에서 언어별로 표시)
 // 비밀번호(ADMIN_PASSWORD)는 서버에서만 확인하고, 실제 쓰기는 Firebase 비밀키(FIREBASE_DB_SECRET)로 수행합니다.
-// 보안 규칙상 settings, 게임방 설정/진행 상태/순위, 전체 삭제는 비밀키로만 가능합니다.
+// 보안 규칙상 settings, 게임방 설정/진행 상태/순위, 오목 리그, 전체 삭제는 비밀키로만 가능합니다.
+
+import { ApiError, envReady, fb, int, json, roomCode, sameText } from '../../server/firebase.js';
+import { OMOK_ADMIN } from '../../server/omok.js';
 
 const COUNTDOWN_MS = 4000;      // 라운드 시작 전 카운트다운
 const FINISH_GRACE_MS = 2000;   // 라운드 종료 후 마지막 점수가 도착할 때까지 기다리는 시간
 const F1_POINTS = [25, 18, 15, 12, 10, 8, 6, 4, 2, 1];
-
-const json = (data, status = 200) =>
-  new Response(JSON.stringify(data), { status, headers: { 'content-type': 'application/json; charset=utf-8' } });
-
-class ApiError extends Error {
-  constructor(code, status = 400, detail) { super(code); this.code = code; this.status = status; this.detail = detail; }
-}
-
-async function sameText(a, b) {
-  const enc = new TextEncoder();
-  const [x, y] = await Promise.all([
-    crypto.subtle.digest('SHA-256', enc.encode(a)),
-    crypto.subtle.digest('SHA-256', enc.encode(b))
-  ]);
-  const p = new Uint8Array(x), q = new Uint8Array(y);
-  let diff = 0;
-  for (let i = 0; i < p.length; i++) diff |= p[i] ^ q[i];
-  return diff === 0;
-}
-
-function dbUrl(env, path) {
-  const u = new URL(env.FIREBASE_DATABASE_URL);
-  u.pathname = u.pathname.replace(/\/$/, '') + '/' + path + '.json';
-  u.searchParams.set('auth', env.FIREBASE_DB_SECRET);
-  return u.toString();
-}
-
-async function fb(env, method, path, value) {
-  const res = await fetch(dbUrl(env, path), {
-    method,
-    body: value === undefined ? undefined : JSON.stringify(value)
-  });
-  if (!res.ok) {
-    const text = (await res.text()).slice(0, 200);
-    throw new ApiError('firebase', 502, `${res.status} ${text}`);
-  }
-  return res.json();
-}
-
-const int = (v, min, max) => {
-  const n = Math.floor(Number(v));
-  if (!Number.isFinite(n) || n < min || n > max) throw new ApiError('bad_request');
-  return n;
-};
-const roomCode = (v) => {
-  const c = String(v || '');
-  if (!/^[0-9]{4}$/.test(c)) throw new ApiError('bad_request');
-  return c;
-};
 
 async function loadRoom(env, code) {
   const [meta, state] = await Promise.all([fb(env, 'GET', `rooms/${code}/meta`), fb(env, 'GET', `rooms/${code}/state`)]);
@@ -184,11 +138,14 @@ const ACTIONS = {
     await fb(env, 'DELETE', `rooms/${code}`);
     await fb(env, 'DELETE', `roomIndex/${code}`);
     return {};
-  }
+  },
+
+  // ----- 오목 리그 -----
+  ...OMOK_ADMIN
 };
 
 export async function onRequestPost({ request, env }) {
-  if (!env.ADMIN_PASSWORD || !env.FIREBASE_DB_SECRET || !env.FIREBASE_DATABASE_URL) {
+  if (!env.ADMIN_PASSWORD || !envReady(env)) {
     return json({ ok: false, code: 'env_missing' }, 500);
   }
   let body;

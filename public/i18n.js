@@ -649,5 +649,11 @@
   document.body.appendChild(chip);
   apply();
 
-  window.I18N = { t, setLang, get lang() { return lang; } };
+  // 다른 파일에서 문구 추가 (예: omok-i18n.js)
+  function extend(more) {
+    for (const l of Object.keys(more)) if (S[l]) Object.assign(S[l], more[l]);
+    apply();
+  }
+
+  window.I18N = { t, setLang, extend, get lang() { return lang; } };
 })();

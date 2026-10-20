@@ -25,6 +25,7 @@
   button.stop { background: #ef4444; }
   button.on { outline: 2px solid #fbbf24; }
   button.small { padding: 6px 10px; font-size: 13px; }
+  select { padding: 8px 10px; border-radius: 9px; border: 1px solid #33405e; background: #0f1522; color: #fff; font-size: 14px; }
   input { padding: 10px 12px; border-radius: 9px; border: 1px solid #33405e; background: #0f1522; color: #fff; font-size: 15px; }
   table { width: 100%; border-collapse: collapse; font-size: 15px; }
   th, td { padding: 7px 8px; border-bottom: 1px solid #253049; text-align: left; }
@@ -49,6 +50,9 @@
   .phase { font-size: 18px; font-weight: 700; }
   .timer { font-size: 28px; font-weight: 700; font-variant-numeric: tabular-nums; }
   .error { color: #ff7676; }
+  .omok-grid { grid-template-columns: 1.3fr 1fr; }
+  @media (max-width: 1000px) { .omok-grid { grid-template-columns: 1fr; } }
+  #oGamesBody td { white-space: nowrap; }
 </style>
 </head>
 <body>
@@ -67,6 +71,7 @@
   <div id="main" class="hidden">
     <div class="tabs">
       <button id="tabRoomBtn" class="active" data-i18n="tabRoom"></button>
+      <button id="tabOmokBtn" data-i18n="tabOmok"></button>
       <button id="tabPracticeBtn" data-i18n="tabPractice"></button>
     </div>
 
@@ -135,6 +140,86 @@
       </div>
     </div>
 
+    <!-- ===== 오목 리그 ===== -->
+    <div id="tabOmok" class="hidden">
+      <div class="panel">
+        <h2 data-i18n="oCreateTitle"></h2>
+        <form id="oCreateForm" class="form">
+          <label><span data-i18n="oFName"></span><input id="oName" maxlength="30" required></label>
+          <label><span data-i18n="oFMoveTime"></span><input id="oMoveTime" type="number" min="5" max="600" value="30" required></label>
+          <label><span data-i18n="oFWin"></span><input id="oWin" type="number" min="0" max="100" value="3" required></label>
+          <label><span data-i18n="oFDraw"></span><input id="oDraw" type="number" min="0" max="100" value="1" required></label>
+          <label><span data-i18n="oFLoss"></span><input id="oLoss" type="number" min="0" max="100" value="0" required></label>
+          <button class="go" type="submit" data-i18n="oCreateBtn"></button>
+        </form>
+        <p class="muted" data-i18n="oCreateHint"></p>
+      </div>
+
+      <div class="panel">
+        <h2 data-i18n="oListTitle"></h2>
+        <div class="scroll"><table>
+          <thead><tr><th data-i18n="colCode"></th><th data-i18n="colGameName"></th><th data-i18n="colCreated"></th><th></th></tr></thead>
+          <tbody id="oListBody"></tbody>
+        </table></div>
+        <p id="oNoLeagues" class="muted" data-i18n="oNoLeagues"></p>
+      </div>
+
+      <div id="oDetail" class="panel hidden">
+        <div class="detail-head">
+          <div>
+            <div class="muted" data-i18n="joinCode"></div>
+            <div id="oCode" class="big-code"></div>
+          </div>
+          <div style="flex:1; min-width: 200px">
+            <div id="oDName" style="font-size:20px;font-weight:700"></div>
+            <div id="oPhase" class="phase"></div>
+            <div id="oLink" class="muted"></div>
+          </div>
+        </div>
+        <div class="row">
+          <button id="oScheduleBtn" class="go"></button>
+          <button id="oReopenBtn" data-i18n="oReopenBtn"></button>
+          <button id="oStartBtn" class="go"></button>
+          <button id="oEndBtn" class="stop"></button>
+          <button id="oCsvBtn" data-i18n="csv"></button>
+        </div>
+
+        <div class="grid omok-grid" style="margin-top:16px">
+          <div>
+            <div class="row" style="margin-bottom:8px">
+              <h2 style="margin:0" data-i18n="oGamesOf"></h2>
+              <select id="oRoundSel"></select>
+              <span id="oByeText" class="muted"></span>
+            </div>
+            <div class="scroll"><table>
+              <thead><tr><th>#</th><th data-i18n="oColBlack"></th><th data-i18n="oColWhite"></th><th class="num" data-i18n="oColMoves"></th><th data-i18n="oColState"></th><th></th></tr></thead>
+              <tbody id="oGamesBody"></tbody>
+            </table></div>
+            <p id="oNoSchedule" class="muted" data-i18n="oNoSchedule"></p>
+            <p class="muted" data-i18n="oManualHint"></p>
+            <div id="oViewer" class="hidden" style="margin-top:12px">
+              <h2 id="oViewerTitle"></h2>
+              <canvas id="oViewerCv" style="width:min(100%, 460px); aspect-ratio:1; border-radius:8px; display:block"></canvas>
+            </div>
+          </div>
+          <div>
+            <h2 data-i18n="oStandings"></h2>
+            <div class="scroll"><table>
+              <thead><tr><th>#</th><th data-i18n="colSid"></th><th data-i18n="colName"></th><th class="num" data-i18n="oColP"></th><th class="num" data-i18n="oColW"></th><th class="num" data-i18n="oColD"></th><th class="num" data-i18n="oColL"></th><th class="num" data-i18n="oColPts"></th></tr></thead>
+              <tbody id="oStandBody"></tbody>
+            </table></div>
+            <p class="muted" data-i18n="oTieHint"></p>
+          </div>
+        </div>
+
+        <h2 id="oMembersTitle" style="margin-top:16px"></h2>
+        <div class="scroll"><table>
+          <thead><tr><th data-i18n="colSid"></th><th data-i18n="colName"></th><th data-i18n="oColLogin"></th><th></th></tr></thead>
+          <tbody id="oMembersBody"></tbody>
+        </table></div>
+      </div>
+    </div>
+
     <!-- ===== 연습 모드 ===== -->
     <div id="tabPractice" class="hidden">
       <div class="panel">
@@ -177,9 +262,12 @@
 </div>
 
 <script src="i18n.js"></script>
+<script src="omok-i18n.js"></script>
 <script src="lib/firebase-app-compat.js"></script>
 <script src="lib/firebase-database-compat.js"></script>
 <script src="api/config"></script>
+<script src="omok-core.js"></script>
 <script src="admin.js"></script>
+<script src="omok-admin.js"></script>
 </body>
 </html>

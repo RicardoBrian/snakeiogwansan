@@ -63,14 +63,14 @@
   } catch (e) { /* 무시 */ }
 
   // 탭
+  const TABS = { room: 'tabRoom', omok: 'tabOmok', practice: 'tabPractice' };
   function showTab(name) {
-    $('tabRoom').classList.toggle('hidden', name !== 'room');
-    $('tabPractice').classList.toggle('hidden', name !== 'practice');
-    $('tabRoomBtn').classList.toggle('active', name === 'room');
-    $('tabPracticeBtn').classList.toggle('active', name === 'practice');
+    for (const [k, id] of Object.entries(TABS)) {
+      $(id).classList.toggle('hidden', name !== k);
+      $(id + 'Btn').classList.toggle('active', name === k);
+    }
   }
-  $('tabRoomBtn').onclick = () => showTab('room');
-  $('tabPracticeBtn').onclick = () => showTab('practice');
+  for (const k of Object.keys(TABS)) $(TABS[k] + 'Btn').onclick = () => showTab(k);
 
   let db = null, serverOffset = 0;
   const now = () => Date.now() + serverOffset;
@@ -82,6 +82,8 @@
     db.ref('.info/serverTimeOffset').on('value', (s) => { serverOffset = s.val() || 0; });
     startRooms();
     startPractice();
+    // 오목 리그(omok-admin.js)도 같은 로그인/DB 를 사용
+    window.dispatchEvent(new CustomEvent('adminstart', { detail: { db, now, run, fill, downloadCsv } }));
   }
 
   // ================= 연습 모드 =================

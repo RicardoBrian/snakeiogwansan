@@ -117,6 +117,12 @@
           }
         }
       }
+    },
+    "omok": {
+      ".write": false
+    },
+    "omokIndex": {
+      ".write": false
     }
   }
 }

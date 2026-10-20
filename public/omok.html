@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Omok League</title>
+<link rel="icon" href="data:,">
+<link rel="stylesheet" href="fonts/fonts.css">
+<link rel="stylesheet" href="common.css">
+<link rel="stylesheet" href="omok.css">
+</head>
+<body>
+
+<div id="login" class="overlay">
+  <div class="card">
+    <h1 data-i18n="oTitle"></h1>
+    <p class="sub" data-i18n="oSubtitle"></p>
+    <form id="loginForm" autocomplete="off">
+      <input id="codeInput" data-i18n-ph="codePh" maxlength="4" inputmode="numeric" class="code-input">
+      <input id="sidInput" data-i18n-ph="sidPh" maxlength="12" inputmode="numeric">
+      <input id="nameInput" data-i18n-ph="namePh" maxlength="10">
+      <button id="joinBtn" type="submit" data-i18n="oJoin"></button>
+    </form>
+    <p id="loginError" class="error"></p>
+    <p id="connText" class="muted"></p>
+  </div>
+</div>
+
+<div id="app" class="hidden">
+  <header class="top">
+    <span id="lgName" class="lg-name"></span>
+    <span id="lgCode" class="code-chip"></span>
+    <span id="meText" class="me-text"></span>
+    <button id="leaveBtn" type="button" class="ghost small" data-i18n="oLeave"></button>
+  </header>
+  <div id="statusText" class="status"></div>
+
+  <main class="layout">
+    <section id="matchBox" class="match hidden">
+      <div class="players">
+        <div id="pB" class="pl"><span class="stone b"></span><span class="pl-name"></span><span class="pl-time"></span></div>
+        <div id="pW" class="pl"><span class="stone w"></span><span class="pl-name"></span><span class="pl-time"></span></div>
+      </div>
+      <div class="board-wrap"><canvas id="boardCv"></canvas></div>
+      <div class="match-foot">
+        <span id="turnText"></span>
+        <button id="resignBtn" type="button" class="ghost small" data-i18n="oResign"></button>
+      </div>
+      <p id="hintText" class="muted"></p>
+    </section>
+
+    <section class="side">
+      <div class="box">
+        <h3 data-i18n="oStandings"></h3>
+        <div class="scroll"><table id="standTbl"></table></div>
+      </div>
+      <div class="box">
+        <h3 data-i18n="oMyGames"></h3>
+        <div class="scroll"><table id="myTbl"></table></div>
+      </div>
+    </section>
+  </main>
+</div>
+
+<div id="countdown" class="hidden"><div id="countdownSub"></div><div id="countdownNum"></div></div>
+<div id="toast"></div>
+
+<script src="i18n.js"></script>
+<script src="omok-i18n.js"></script>
+<script src="lib/firebase-app-compat.js"></script>
+<script src="lib/firebase-database-compat.js"></script>
+<script src="api/config"></script>
+<script src="omok-core.js"></script>
+<script src="omok.js"></script>
+</body>
+</html>

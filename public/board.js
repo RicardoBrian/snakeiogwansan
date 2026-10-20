@@ -102,7 +102,7 @@
       if (tt < st.startAt) { phaseKey = 'phCountdown'; timer = String(Math.max(1, Math.ceil((st.startAt - tt) / 1000))); }
       else if (tt < st.endAt) { phaseKey = 'phRound'; timer = fmtTime(st.endAt - tt); low = st.endAt - tt <= 10000; }
       else { phaseKey = 'phTally'; timer = '0:00'; }
-    } else if (st.phase === 'results') phaseKey = 'phResults';
+    } else if (st.phase === 'results') { phaseKey = 'phResults'; if (st.nextAt) { timer = fmtTime(st.nextAt - tt); low = st.nextAt - tt <= 10000; } }
     else if (st.phase === 'finished') phaseKey = 'phFinished';
     $('phase').textContent = t(phaseKey, { r: st.round || 0, n: meta.rounds });
     $('sub').textContent = st.phase === 'results'

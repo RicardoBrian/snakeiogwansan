@@ -5,6 +5,7 @@
 const COUNTDOWN_MS = 4000;      // 라운드 시작 전 카운트다운
 const FINISH_GRACE_MS = 2000;   // 라운드 종료 후 마지막 점수가 도착할 때까지 기다리는 시간
 const F1_POINTS = [25, 18, 15, 12, 10, 8, 6, 4, 2, 1];
+const DEFAULT_BREAK_SEC = 30;   // 라운드 사이 쉬는 시간 기본값 (지나면 준비 안 한 학생이 있어도 시작)
 const ONLINE_MS = 30000;        // presence 갱신이 이 시간 안이면 접속 중으로 봄 (학생은 10초마다 갱신)
 
 const json = (data, status = 200) =>
@@ -111,7 +112,7 @@ async function beginRound(env, code, meta, state) {
 
 // 비밀번호 없이 누구나 부를 수 있는 작업: 조건을 서버가 직접 확인하므로 안전
 const PUBLIC_ACTIONS = {
-  // 라운드 결과 화면에서 접속 중인 학생이 모두 '준비'를 누르면 다음 라운드 시작
+  // 라운드 결과 화면에서 접속 중인 학생이 모두 '준비'를 누르거나, 쉬는 시간(state.nextAt)이 지나면 다음 라운드 시작
   async autoAdvance(env, body) {
     const code = roomCode(body.code);
     const { meta, state } = await loadRoom(env, code);
@@ -121,6 +122,7 @@ const PUBLIC_ACTIONS = {
       fb(env, 'GET', `rooms/${code}/ready/${state.roundKey}`)
     ]);
     const t = Date.now();
+    if (state.nextAt && t >= state.nextAt) { await beginRound(env, code, meta, state); return { timeout: true }; }
     const online = Object.entries(presence || {}).filter(([, v]) => v && t - Number(v.t || 0) < ONLINE_MS).map(([sid]) => sid);
     if (!online.length || online.some((sid) => !(ready && ready[sid] === true))) throw new ApiError('not_ready', 409);
     await beginRound(env, code, meta, state);
@@ -143,6 +145,7 @@ const ACTIONS = {
     const rounds = int(body.rounds, 1, 20);
     const duration = int(body.duration, 30, 1800);
     const killBonus = int(body.killBonus || 0, 0, 10);
+    const breakSec = int(body.breakSec == null ? DEFAULT_BREAK_SEC : body.breakSec, 10, 600);
     let points = Array.isArray(body.points) ? body.points : F1_POINTS;
     points = points.slice(0, 30).map((p) => int(p, 0, 100));
     if (!points.length) throw new ApiError('bad_request');
@@ -155,7 +158,7 @@ const ACTIONS = {
     if (!code) throw new ApiError('server', 500, 'no free code');
     const createdAt = Date.now();
     await fb(env, 'PUT', `rooms/${code}`, {
-      meta: { name, rounds, duration, points, killBonus, createdAt },
+      meta: { name, rounds, duration, points, killBonus, breakSec, createdAt },
       state: { phase: 'lobby', round: 0 }
     });
     await fb(env, 'PUT', `roomIndex/${code}`, { name, createdAt, rounds });
@@ -198,7 +201,9 @@ const ACTIONS = {
       [`roundResults/${state.roundKey}`]: out.results.length ? out.results : null,
       standings: out.standings,
       players: null,
-      state: { phase: finished ? 'finished' : 'results', round: state.round, roundKey: state.roundKey }
+      state: finished
+        ? { phase: 'finished', round: state.round, roundKey: state.roundKey }
+        : { phase: 'results', round: state.round, roundKey: state.roundKey, nextAt: Date.now() + (Number(meta.breakSec) || DEFAULT_BREAK_SEC) * 1000 }
     });
     return { finished };
   },
@@ -222,7 +227,8 @@ export async function onRequestPost({ request, env }) {
     try {
       return json(Object.assign({ ok: true }, await PUBLIC_ACTIONS[body.action](env, body)));
     } catch (e) {
-      if (e instanceof ApiError) return json({ ok: false, code: e.code, detail: e.detail }, e.status);
+      // 여러 학생이 동시에 요청하므로 '아직 아님/이미 시작됨'은 정상 응답(200)으로 돌려줌
+      if (e instanceof ApiError) return json({ ok: false, code: e.code, detail: e.detail }, e.status === 409 ? 200 : e.status);
       return json({ ok: false, code: 'server', detail: String(e && e.message) }, 500);
     }
   }

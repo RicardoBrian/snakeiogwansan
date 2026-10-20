@@ -595,7 +595,8 @@
     const st = room && room.state;
     if (!st || st.phase !== 'results' || (st.round || 0) >= ((room.meta || {}).rounds || 0)) return;
     const info = readyInfo();
-    if (!info.online.length || info.waiting.length) return;
+    const timeUp = st.nextAt && now() >= st.nextAt;
+    if (!timeUp && (!info.online.length || info.waiting.length)) return;
     if (Date.now() - advanceAt < 3000) return;
     advanceAt = Date.now();
     // 서버가 다시 한 번 모두 준비됐는지 확인한 뒤에만 시작함
@@ -648,6 +649,12 @@
       if ($('countdownNum').textContent !== n) $('countdownNum').textContent = n;
     }
     if (view === 'panel' && st.phase === 'round' && !room.tallyShown) { room.tallyShown = true; renderRoom(); }
+    // 쉬는 시간 카운트다운 표시 + 시간이 다 되면 다음 라운드 요청
+    if (st.phase === 'results' && st.nextAt) {
+      const sec = Math.max(0, Math.ceil((st.nextAt - tt) / 1000));
+      if (sec !== room.breakSec) { room.breakSec = sec; renderRoom(); }
+      if (tt >= st.nextAt) maybeAdvance();
+    }
     if (st.phase !== 'round') room.tallyShown = false;
   }
 
@@ -721,7 +728,8 @@
       $('rmMine').textContent = myRes
         ? t('rmMine', { rank: t('rankN', { n: myRes.rank }), pts: myRes.pts, total: myStand ? myStand.total : myRes.pts })
         : t('rmNoScore', { total: myStand ? myStand.total : 0 });
-      let txt = t('readyCount', { n: info0.ready.length, m: info0.online.length });
+      let txt = (st.nextAt ? t('autoStartIn', { s: Math.max(0, Math.ceil((st.nextAt - now()) / 1000)) }) + ' · ' : '')
+        + t('readyCount', { n: info0.ready.length, m: info0.online.length });
       if (info0.waiting.length && info0.waiting.length <= 8) txt += ' · ' + t('readyWaiting', { names: info0.waiting.join(', ') });
       $('rmText').textContent = txt;
     }
@@ -730,7 +738,8 @@
       const btn = $('readyBtn');
       btn.textContent = t(info.mine ? 'readyCancel' : 'readyBtn');
       btn.classList.toggle('is-ready', info.mine);
-      let txt = t('readyCount', { n: info.ready.length, m: info.online.length });
+      let txt = (st.nextAt ? t('autoStartIn', { s: Math.max(0, Math.ceil((st.nextAt - now()) / 1000)) }) + ' · ' : '')
+        + t('readyCount', { n: info.ready.length, m: info.online.length });
       if (info.waiting.length && info.waiting.length <= 8) txt += ' · ' + t('readyWaiting', { names: info.waiting.join(', ') });
       $('readyText').textContent = txt;
     }

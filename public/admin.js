@@ -163,7 +163,8 @@
         rounds: Number($('fRounds').value),
         duration: Math.round(Number($('fDuration').value) * 60),
         points,
-        killBonus: Number($('fKillBonus').value)
+        killBonus: Number($('fKillBonus').value),
+        breakSec: Number($('fBreak').value)
       });
       btn.disabled = false;
       if (r.ok) { $('fName').value = ''; selectRoom(r.code); }
@@ -237,7 +238,7 @@
         if (tt < st.endAt) return { key: 'phRound', timer: fmtTime(st.endAt - tt) };
         return { key: 'phTally', timer: '0:00' };
       }
-      if (st.phase === 'results') return { key: 'phResults', timer: '' };
+      if (st.phase === 'results') return { key: 'phResults', timer: st.nextAt ? fmtTime(st.nextAt - tt) : '' };
       if (st.phase === 'finished') return { key: 'phFinished', timer: '' };
       return { key: 'phLobby', timer: meta.duration ? fmtTime(meta.duration * 1000) : '' };
     }
@@ -253,7 +254,7 @@
       $('dInfo').textContent = t('roomInfo', {
         r: st.round || 0, n: meta.rounds, m: R.members,
         dur: fmtTime((meta.duration || 0) * 1000), pts: (meta.points || []).join(','), kb: meta.killBonus || 0
-      }) + (st.phase === 'results' ? t('adminReady', readyCount(R, now())) : '');
+      }) + t('infoBreak', { br: meta.breakSec || 30 }) + (st.phase === 'results' ? t('adminReady', readyCount(R, now())) : '');
       const canStart = (st.phase === 'lobby' || st.phase === 'results') && (st.round || 0) < meta.rounds;
       const sb = $('startRoundBtn');
       sb.disabled = !canStart;
@@ -315,6 +316,12 @@
       if (!sel || !R || !R.state) return;
       renderDetail();
       const st = R.state;
+      // 쉬는 시간이 끝났으면 다음 라운드 시작 (학생 화면에서도 요청하지만 관리자 페이지에서도 보장)
+      if (st.phase === 'results' && st.nextAt && now() > st.nextAt + 1000 && !finishing) {
+        finishing = true;
+        await adminAction('autoAdvance', { code: sel });
+        finishing = false;
+      }
       if (st.phase === 'round' && now() > st.endAt + 2500 && !finishing) {
         finishing = true;
         const r = await adminAction('finishRound', { code: sel });

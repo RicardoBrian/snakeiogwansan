@@ -157,7 +157,7 @@
       boardLobby: '접속해서 코드를 입력하세요! 현재 {m}명 참가',
       readyBtn: '✅ 다음 라운드 준비 완료',
       readyCancel: '준비 취소',
-      readyCount: '준비 {n}/{m}명 · 접속한 사람이 모두 준비하면 자동으로 시작해요',
+      readyCount: '준비 {n}/{m}명 (모두 준비하면 바로 시작)',
       readyWaiting: '아직 준비 안 함: {names}',
       adminReady: ' · 다음 라운드 준비 {n}/{m}',
       boardReady: '다음 라운드 준비 {n}/{m}명 — 모두 준비하면 자동 시작',
@@ -165,7 +165,10 @@
       rmTitle: '🏁 라운드 {r} 끝!',
       rmMine: '이번 라운드 {rank} · +{pts}점 (누적 {total}점)',
       rmNoScore: '이번 라운드 기록 없음 (누적 {total}점)',
-      rmLater: '결과 먼저 볼게요'
+      rmLater: '결과 먼저 볼게요',
+      fBreak: '라운드 사이 쉬는 시간 (초)',
+      autoStartIn: '⏱ {s}초 후 자동 시작',
+      infoBreak: ' · 쉬는 시간 {br}초'
     },
 
     en: {
@@ -318,7 +321,7 @@
       boardLobby: 'Join and enter the code! {m} players so far',
       readyBtn: '✅ Ready for next round',
       readyCancel: 'Cancel ready',
-      readyCount: 'Ready {n}/{m} · Starts automatically when everyone online is ready',
+      readyCount: 'Ready {n}/{m} (starts now if everyone is ready)',
       readyWaiting: 'Not ready yet: {names}',
       adminReady: ' · ready for next round {n}/{m}',
       boardReady: 'Ready for next round {n}/{m} — starts when everyone is ready',
@@ -326,7 +329,10 @@
       rmTitle: '🏁 Round {r} over!',
       rmMine: 'This round: {rank} · +{pts} pts ({total} total)',
       rmNoScore: 'No score this round ({total} total)',
-      rmLater: 'Show me the results first'
+      rmLater: 'Show me the results first',
+      fBreak: 'Break between rounds (sec)',
+      autoStartIn: '⏱ Auto-start in {s}s',
+      infoBreak: ' · break {br}s'
     },
 
     zh: {
@@ -479,7 +485,7 @@
       boardLobby: '请进入网站并输入代码！当前 {m} 人',
       readyBtn: '✅ 准备好下一轮',
       readyCancel: '取消准备',
-      readyCount: '已准备 {n}/{m} 人 · 在线的人全部准备后自动开始',
+      readyCount: '已准备 {n}/{m} 人（全部准备即开始）',
       readyWaiting: '尚未准备：{names}',
       adminReady: ' · 下一轮准备 {n}/{m}',
       boardReady: '下一轮准备 {n}/{m} 人 — 全部准备后自动开始',
@@ -487,7 +493,10 @@
       rmTitle: '🏁 第 {r} 轮结束！',
       rmMine: '本轮 {rank} · +{pts} 分（累计 {total} 分）',
       rmNoScore: '本轮无成绩（累计 {total} 分）',
-      rmLater: '先看结果'
+      rmLater: '先看结果',
+      fBreak: '轮间休息时间（秒）',
+      autoStartIn: '⏱ {s} 秒后自动开始',
+      infoBreak: ' · 休息 {br} 秒'
     },
 
     ru: {
@@ -640,7 +649,7 @@
       boardLobby: 'Заходите и вводите код! Уже {m} игроков',
       readyBtn: '✅ Готов к следующему раунду',
       readyCancel: 'Отменить готовность',
-      readyCount: 'Готовы {n}/{m} · Раунд начнётся сам, когда будут готовы все в сети',
+      readyCount: 'Готовы {n}/{m} (старт сразу, если готовы все)',
       readyWaiting: 'Ещё не готовы: {names}',
       adminReady: ' · готовы к раунду {n}/{m}',
       boardReady: 'Готовы к следующему раунду: {n}/{m} — старт, когда готовы все',
@@ -648,7 +657,10 @@
       rmTitle: '🏁 Раунд {r} окончен!',
       rmMine: 'В этом раунде: {rank} · +{pts} очк. (всего {total})',
       rmNoScore: 'В этом раунде нет результата (всего {total})',
-      rmLater: 'Сначала посмотрю итоги'
+      rmLater: 'Сначала посмотрю итоги',
+      fBreak: 'Перерыв между раундами (сек)',
+      autoStartIn: '⏱ Автостарт через {s} с',
+      infoBreak: ' · перерыв {br} с'
     }
   };
 

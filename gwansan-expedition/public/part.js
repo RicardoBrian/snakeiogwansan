@@ -9,15 +9,16 @@
   const PART = Number(document.body.dataset.part);
   const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
-  const room = (params.get('room') || CFG.kkutuRoom || '').trim();
-  const link = id => (CFG.links && CFG.links[id]) || '';
+  const pick = (q, key) => String(params.get(q) || CFG[key] || '').trim();
+  const code = v => (v ? `<b class="room">${esc(v)}</b>` : '<b class="room tbd">추후 공지</b>');
+  const room = pick('room', 'kkutuRoom');
+  const SITE = esc(CFG.gameSite || 'game.kakainfo.com');
 
   const hm = s => { const [h, m] = s.split(':').map(Number); return h * 3600 + m * 60; };
   const TIME = { 1: ['9:40', '10:20'], 2: ['10:30', '11:15'] }[PART];
   const START = hm(TIME[0]), END = hm(TIME[1]);
 
   const PRIZE = '<div class="podium"><div class="p2"><b>2등</b><span>관산쿠폰</span><em>3장</em></div><div class="p1"><b>1등</b><span>관산쿠폰</span><em>5장</em></div><div class="p3"><b>3등</b><span>관산쿠폰</span><em>1장</em></div></div>';
-  const linkStep = id => (link(id) ? `<li><b>${esc(link(id))}</b> 접속</li>` : '');
 
   const GAMES = {
     1: [
@@ -27,25 +28,40 @@
             <li><b>kkutu.kr</b> 접속</li>
             <li><b>[게임 시작]</b> 버튼</li>
             <li><b>[친선전]</b> 선택</li>
-            <li>방 번호 ${room ? `<b class="room">${esc(room)}</b>` : '<b class="room tbd">추후 공지</b>'} 입장</li>
+            <li>방 번호 ${code(room)} 입장</li>
           </ol>`,
         rule: ['<b>3라운드 = 1세트</b>, 총 <b>3세트</b> 진행', '세트마다 <b>순위의 역순</b>으로 승점', '3세트 <b>승점 합계</b>로 1·2·3등']
       },
       {
         id: 'tetris', name: '테트리스', ruin: '무너지는 탑',
-        how: linkStep('tetris') ? `<ol class="steps">${linkStep('tetris')}</ol>` : '',
+        how: `<ol class="steps">
+            <li><b>${SITE}/tetris</b> 접속</li>
+            <li><b>학번·이름</b> 입력</li>
+            <li>방 ${code(pick('tetris', 'tetrisRoom'))} 선택</li>
+            <li><b>[입장하기]</b> → 판 시작 기다리기</li>
+          </ol>`,
         rule: ['<b>5라운드</b> 진행', '라운드마다 승점', '<b>최종 승점</b>이 높은 순서로 1·2·3등']
       }
     ],
     2: [
       {
         id: 'omok', name: '오목', ruin: '돌의 미궁',
-        how: linkStep('omok') ? `<ol class="steps">${linkStep('omok')}</ol>` : '',
+        how: `<ol class="steps">
+            <li><b>${SITE}/omok</b> 접속</li>
+            <li>게임 코드 ${code(pick('omok', 'omokCode'))}</li>
+            <li><b>학번·이름</b> 입력</li>
+            <li><b>[등록 / 입장]</b> → 대진표 기다리기</li>
+          </ol>`,
         rule: ['<b>리그 방식</b> (모든 참가자와 대결)', '경기 결과로 승점', '<b>승점 순</b>으로 1·2·3등']
       },
       {
         id: 'snake', name: '지렁이 게임', ruin: '뱀의 동굴',
-        how: linkStep('snake') ? `<ol class="steps">${linkStep('snake')}</ol>` : '',
+        how: `<ol class="steps">
+            <li><b>${SITE}/snake</b> 접속</li>
+            <li>게임 코드 ${code(pick('snake', 'snakeCode'))}</li>
+            <li><b>학번·이름</b> 입력</li>
+            <li><b>[대회 입장]</b> → 대기실에서 기다리기</li>
+          </ol>`,
         rule: ['<b>5라운드</b> 진행', '라운드마다 승점', '<b>최종 승점</b>이 높은 순서로 1·2·3등']
       }
     ]

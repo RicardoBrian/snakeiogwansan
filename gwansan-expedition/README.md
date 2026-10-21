@@ -22,6 +22,7 @@ gwansan-expedition/       ← Cloudflare Pages "루트 디렉터리"
    ├─ bgm.js              배경음악 (합성 행진곡 / assets/bgm.mp3)
    ├─ admin.html / admin.js  관리자 페이지
    ├─ board.html / board.js / board.css / board-art.js  컴퓨터실 전광판 (4:3)
+   ├─ part1.html / part2.html / part.js / part.css / part-config.js  1부·2부 경기 안내 (4:3)
    ├─ firebase-config.js  Firebase 설정값 + 관리자 이메일
    ├─ style.css / admin.css / _headers / 404.html
    └─ assets/             (선택) bgm.mp3
@@ -89,7 +90,14 @@ QR이 들어간 신청용 버전은 git 기록(커밋 "Add 2-1 class badge…")�
 - 시간은 **그 PC의 시계** 기준이니 당일 PC 시간이 맞는지 확인하세요.
 - 리허설: `/board?time=09:38` (그 시각부터 흐르는 시계), `&speed=30` 이면 30배속으로 전체 흐름 확인
 
-## 7. 테스트 방법
+## 7. 1부·2부 경기 안내 화면 (4:3)
+- **https://gwansanjae.pages.dev/part1** : 끄투온라인(참가 방법·진행 방식) + 테트리스, **/part2** : 오목 + 지렁이 게임
+- 각 화면: 시계, 시작까지 / 입장 마감까지(시작 후 5분) / 종료까지, 종목별 진행 방식, 상품(관산쿠폰 1등 5장 · 2등 3장 · 3등 1장)
+- **끄투 방 번호**: `public/part-config.js`의 `kkutuRoom`에 적고 푸시하거나, 당일 바로 `/part1?room=1234` 로 열기 (비우면 "추후 공지")
+- (선택) 테트리스·오목·지렁이 게임 접속 주소도 `part-config.js`의 `links`에 적으면 "참가 방법"에 표시됩니다.
+- 전광판(`/board`)과 같은 방식으로 [⛶ 전체 화면], 마우스 자동 숨김
+
+## 8. 테스트 방법
 
 ### (1) 흐름만 보기 — 저장 안 함
 주소 뒤에 `?demo=1` → 신청은 저장 없이 끝까지, 결과 확인은 "선정" 예시 화면이 나옵니다.

@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>관산 게임왕 · 1부 안내</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Black+Han+Sans&family=Noto+Sans+KR:wght@500;700;900&display=swap">
+<link rel="stylesheet" href="part.css">
+</head>
+<body data-part="1">
+<div class="stage" id="stage">
+  <header class="top">
+    <div class="brand">
+      <span class="badge">2-1</span>
+      <h1>관산 게임왕</h1>
+      <div class="part"><b id="partNo"></b><span id="partTime"></span></div>
+    </div>
+    <div class="clock">
+      <div class="time" id="clock">--:--:--</div>
+      <div class="status" id="status"></div>
+    </div>
+  </header>
+  <main class="games" id="games"></main>
+  <footer class="bottom">
+    <span>📍 집결지 <b>컴퓨터실</b></span>
+    <span class="warn">⚠ 시작 후 5분 안에 안 오면 탈락!</span>
+    <span>🎟 1등 5장 · 2등 3장 · 3등 1장</span>
+  </footer>
+</div>
+<button type="button" class="fs-btn" id="fsBtn">⛶ 전체 화면</button>
+<script src="board-art.js"></script>
+<script src="part-config.js"></script>
+<script src="part.js"></script>
+</body>
+</html>

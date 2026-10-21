@@ -23,6 +23,7 @@ gwansan-expedition/       ← Cloudflare Pages "루트 디렉터리"
    ├─ admin.html / admin.js  관리자 페이지
    ├─ board.html / board.js / board.css / board-art.js  컴퓨터실 전광판 (4:3)
    ├─ part1.html / part2.html / part.js / part.css / part-config.js  1부·2부 경기 안내 (4:3)
+   ├─ screen.html / nav-keys.js  컴퓨터실용: 0·1·2 키로 화면 전환
    ├─ firebase-config.js  Firebase 설정값 + 관리자 이메일
    ├─ style.css / admin.css / _headers / 404.html
    └─ assets/             (선택) bgm.mp3
@@ -97,7 +98,20 @@ QR이 들어간 신청용 버전은 git 기록(커밋 "Add 2-1 class badge…")�
 - (선택) 테트리스·오목·지렁이 게임 접속 주소도 `part-config.js`의 `links`에 적으면 "참가 방법"에 표시됩니다.
 - 전광판(`/board`)과 같은 방식으로 [⛶ 전체 화면], 마우스 자동 숨김
 
-## 8. 테스트 방법
+## 8. 컴퓨터실 화면 전환 (키보드)
+당일에는 **https://gwansanjae.pages.dev/screen** 하나만 열고 오른쪽 아래 [⛶ 전체 화면] → 키보드로 전환:
+
+| 키 | 화면 |
+|---|---|
+| `0` | 전광판 (시계·현재 순서·남은 시간) |
+| `1` | 1부 안내 (끄투온라인·테트리스) |
+| `2` | 2부 안내 (오목·지렁이 게임) |
+
+- 세 화면이 한 페이지 안에 있어서 **전환해도 전체 화면이 풀리지 않습니다.** (화면을 마우스로 클릭한 뒤에도 키 동작)
+- 주소 뒤 옵션은 그대로 전달: `/screen?room=1234` (끄투 방 번호), `/screen?time=09:38` (리허설), `/screen#1` (1부 화면으로 시작)
+- `/board`, `/part1`, `/part2`를 따로 열어도 같은 키로 이동은 되지만, 이 경우엔 페이지가 바뀌면서 전체 화면이 풀립니다.
+
+## 9. 테스트 방법
 
 ### (1) 흐름만 보기 — 저장 안 함
 주소 뒤에 `?demo=1` → 신청은 저장 없이 끝까지, 결과 확인은 "선정" 예시 화면이 나옵니다.

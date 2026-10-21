@@ -133,3 +133,6 @@ body.idle { cursor: none; }
 @media (prefers-reduced-motion: reduce) {
   *, *::before { animation: none !important; transition: none !important; }
 }
+
+/* /screen 안에 들어 있을 때는 자체 전체 화면 버튼 숨김 */
+body.embedded .fs-btn { display: none; }

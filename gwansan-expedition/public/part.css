@@ -86,3 +86,6 @@ body.idle .fs-btn { opacity: 0; pointer-events: none; }
 body.idle { cursor: none; }
 @keyframes pulse { 50% { transform: scale(1.05); } }
 @media (prefers-reduced-motion: reduce) { * { animation: none !important; } }
+
+/* /screen 안에 들어 있을 때는 자체 전체 화면 버튼 숨김 */
+body.embedded .fs-btn { display: none; }

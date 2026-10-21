@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>관산 게임왕 · 전광판</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Black+Han+Sans&family=Noto+Sans+KR:wght@500;700;900&display=swap">
+<link rel="stylesheet" href="board.css">
+</head>
+<body>
+<!-- 1600×1200(4:3) 무대를 화면에 맞게 확대/축소 -->
+<div class="stage" id="stage">
+  <header class="top">
+    <div class="brand">
+      <span class="badge">2-1</span>
+      <h1>관산 게임왕</h1>
+    </div>
+    <div class="clock">
+      <div class="time" id="clock">--:--:--</div>
+      <div class="date" id="date"></div>
+    </div>
+  </header>
+
+  <section class="now" id="now">
+    <div class="now-main">
+      <p class="now-label" id="nowLabel"></p>
+      <h2 class="now-title" id="nowTitle"></h2>
+      <div class="now-games" id="nowGames"></div>
+    </div>
+    <div class="now-side">
+      <p class="count-label" id="countLabel"></p>
+      <p class="count" id="count"></p>
+      <div class="late" id="late" hidden>
+        <b>입장 마감까지</b><span id="lateCount"></span>
+        <small>시작 후 5분 안에 안 오면 탈락!</small>
+      </div>
+      <div class="late closed" id="lateClosed" hidden><b>입장 마감</b><small>지각생은 함정(실격)에 빠졌다네…</small></div>
+    </div>
+  </section>
+
+  <section class="schedule">
+    <div class="slot" id="slot1">
+      <div class="slot-head"><b>1부</b><span>9:40 ~ 10:20</span><em class="slot-state"></em></div>
+      <div class="slot-games" data-part="1"></div>
+      <div class="bar"><i></i></div>
+    </div>
+    <div class="slot break" id="slotB">
+      <div class="slot-head"><b>☕</b><span>쉬는 시간</span></div>
+      <p>10:20 ~ 10:30</p>
+      <div class="bar"><i></i></div>
+    </div>
+    <div class="slot" id="slot2">
+      <div class="slot-head"><b>2부</b><span>10:30 ~ 11:15</span><em class="slot-state"></em></div>
+      <div class="slot-games" data-part="2"></div>
+      <div class="bar"><i></i></div>
+    </div>
+  </section>
+
+  <section class="doctor">
+    <div class="npc" id="npc"></div>
+    <div class="bubble"><small>오범석 박사</small><p id="talk"></p></div>
+  </section>
+
+  <footer class="bottom">
+    <span class="place">📍 집결지 <b>컴퓨터실</b></span>
+    <span class="result" id="result">📜 선정 결과는 축제 당일 아침 공지</span>
+    <span class="prize">🏆 승리하고 상품 받아가세요!</span>
+  </footer>
+
+  <div class="sim" id="sim" hidden></div>
+</div>
+<button type="button" class="fs-btn" id="fsBtn">⛶ 전체 화면</button>
+
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script src="firebase-config.js"></script>
+<script src="shared.js"></script>
+<script src="board-art.js"></script>
+<script src="board.js"></script>
+</body>
+</html>

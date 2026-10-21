@@ -21,6 +21,7 @@ gwansan-expedition/       ← Cloudflare Pages "루트 디렉터리"
    ├─ shared.js           종목·시간 정보, 결과 조회 키 계산
    ├─ bgm.js              배경음악 (합성 행진곡 / assets/bgm.mp3)
    ├─ admin.html / admin.js  관리자 페이지
+   ├─ board.html / board.js / board.css / board-art.js  컴퓨터실 전광판 (4:3)
    ├─ firebase-config.js  Firebase 설정값 + 관리자 이메일
    ├─ style.css / admin.css / _headers / 404.html
    └─ assets/             (선택) bgm.mp3
@@ -78,7 +79,17 @@ gwansan-expedition/       ← Cloudflare Pages "루트 디렉터리"
 QR이 들어간 신청용 버전은 git 기록(커밋 "Add 2-1 class badge…")에 남아 있습니다.
 문구를 고치려면 `promo/poster.html`을 수정 → Chrome으로 열기 → 인쇄 → "PDF로 저장", 여백 없음, **배경 그래픽 켜기**.
 
-## 6. 테스트 방법
+## 6. 컴퓨터실 전광판 (4:3)
+**https://gwansanjae.pages.dev/board** 를 컴퓨터실 TV·프로젝터 PC에서 열고 오른쪽 아래 **[⛶ 전체 화면]** (마우스는 3초 뒤 자동으로 숨김).
+- 실시간 시계·날짜, 지금 순서(1부 곧 시작 / 1부 진행 중 / 쉬는 시간 / 2부 / 대회 종료)와 남은 시간
+- 각 부 시작 후 5분간 **"입장 마감까지 mm:ss"** 빨간 카운트다운 → 이후 "입장 마감"
+- 1부·쉬는 시간·2부 진행 막대, 상황별로 8초마다 바뀌는 오범석 박사 대사
+- 선정 결과 공개 여부를 실시간 반영 (관리자가 공개하면 하단 표시가 바뀜)
+- 화면 비율이 4:3이 아니어도 4:3으로 맞춰 가운데 표시(남는 곳은 검은 여백)
+- 시간은 **그 PC의 시계** 기준이니 당일 PC 시간이 맞는지 확인하세요.
+- 리허설: `/board?time=09:38` (그 시각부터 흐르는 시계), `&speed=30` 이면 30배속으로 전체 흐름 확인
+
+## 7. 테스트 방법
 
 ### (1) 흐름만 보기 — 저장 안 함
 주소 뒤에 `?demo=1` → 신청은 저장 없이 끝까지, 결과 확인은 "선정" 예시 화면이 나옵니다.

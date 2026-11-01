@@ -13,6 +13,8 @@
   const STALE_MS = 6000, BEAT_MS = 2000;
   const HIDDEN_LIMIT = 3000;        // 다른 창으로 나가 있으면 탈락까지 시간(ms)
   const PUBLISH_GAP = 120;          // 내 보드 전송 최소 간격(ms)
+  const OPEN_CODE = '0000';         // 선생님 없이 계속 열려 있는 오픈 방 (연습)
+  const OPEN_GAP = 6000;            // 오픈 방: 판이 끝나고 다음 판 요청까지 (서버는 5.5초 이후부터 받음)
   const ATTACK = { normal: [0, 0, 1, 2, 4], tspin: [0, 2, 4, 6], mini: [0, 0, 1] };
   const COMBO = [0, 0, 1, 1, 1, 2, 2, 3, 3, 4, 4, 4, 5];
   const PC_BONUS = 10;
@@ -126,7 +128,7 @@
   let boards = {}, entries = {}, results = {};
   let G = null;                       // 내 게임 (판이 끝나도 다음 판 전까지 화면에 남김)
   let seenKey = null;                 // 마지막으로 본 판 (id@start)
-  let subs = [], beatTimer = null, hiddenTimer = null;
+  let subs = [], beatTimer = null, hiddenTimer = null, openTimer = null, openNextTry = 0, openBusy = false;
   let loginMsg = null;
   let rulesErr = false;               // Firebase 보안 규칙이 아직 게시되지 않아 쓰기가 막힘
   const denied = (e) => /permission/i.test(String((e && (e.code || e.message)) || ''));
@@ -153,6 +155,14 @@
     toastTimer = setTimeout(() => el.classList.remove('show'), 2200);
   }
 
+  const roomTitle = (id, r) => (id === OPEN_CODE ? t('tOpenName') : (r && r.name) || '');
+  async function openApi(action) {
+    try {
+      const res = await fetch('api/tetris', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ action }) });
+      return await res.json().catch(() => ({ ok: false }));
+    } catch (e) { return { ok: false }; }
+  }
+
   // ---------- 방 목록 (로그인 화면) ----------
   db.ref('tetris/rooms').on('value', (s) => { rooms = s.val() || {}; renderRooms(); });
   db.ref('tetris/lobby').on('value', (s) => { lobbyAll = s.val() || {}; renderRooms(); scheduleSide(); });
@@ -170,22 +180,18 @@
   function renderRooms() {
     const box = $('roomList');
     box.innerHTML = '';
-    const ids = Object.keys(rooms).sort((a, b) => (+rooms[a].created || 0) - (+rooms[b].created || 0));
-    if (!rooms[selectedRid]) selectedRid = ids.length === 1 ? ids[0] : '';
-    if (!ids.length) {
-      const p = document.createElement('p');
-      p.className = 'muted';
-      p.textContent = t('tNoRooms');
-      box.appendChild(p);
-    }
+    // 오픈 방은 아직 만들어지기 전이어도 맨 위에 항상 보임 (처음 들어올 때 서버가 만듦)
+    const ids = [OPEN_CODE].concat(Object.keys(rooms).filter((id) => id !== OPEN_CODE)
+      .sort((a, b) => (+rooms[a].created || 0) - (+rooms[b].created || 0)));
+    if (selectedRid !== OPEN_CODE && !rooms[selectedRid]) selectedRid = ids.length === 2 ? ids[1] : OPEN_CODE;
     for (const id of ids) {
       const b = document.createElement('button');
       b.type = 'button';
-      b.className = 'roomBtn' + (id === selectedRid ? ' sel' : '');
+      b.className = 'roomBtn' + (id === selectedRid ? ' sel' : '') + (id === OPEN_CODE ? ' open' : '');
       const nm = document.createElement('b');
-      nm.textContent = `${id} ${rooms[id].name || ''}`;
+      nm.textContent = id === OPEN_CODE ? '🟢 ' + roomTitle(id) : `${id} ${roomTitle(id, rooms[id])}`;
       const info = document.createElement('span');
-      const g = rooms[id].game;
+      const g = rooms[id] && rooms[id].game;
       info.textContent = t('tRoomInfo', { n: Object.keys(freshLobby(id)).length }) + (g ? ' · ' + t('tRoomGames', { no: g.no }) : '');
       b.append(nm, info);
       b.addEventListener('click', () => {
@@ -203,17 +209,23 @@
     $('nameInput').value = localStorage.getItem('snake_name') || '';
   } catch (e) { /* 저장소 사용 불가 */ }
 
-  $('loginForm').addEventListener('submit', (e) => {
+  $('loginForm').addEventListener('submit', async (e) => {
     e.preventDefault();
     const sid = $('sidInput').value.trim();
     const name = $('nameInput').value.trim();
     if (!/^[0-9A-Za-z]{1,12}$/.test(sid)) { setLoginError('errSid'); return; }
     if (!name || name.length > 10) { setLoginError('errName'); return; }
     if (!connected) { setLoginError('errConnecting'); return; }
-    if (!rooms[selectedRid]) { setLoginError(Object.keys(rooms).length ? 'tErrRoom' : 'tNoRooms'); return; }
+    if (selectedRid !== OPEN_CODE && !rooms[selectedRid]) { setLoginError('tErrRoom'); return; }
     for (const r of Object.keys(lobbyAll)) if (freshLobby(r)[sid]) { setLoginError('errDup'); return; }
     try { localStorage.setItem('snake_sid', sid); localStorage.setItem('snake_name', name); } catch (e2) { /* 무시 */ }
     setLoginError(null);
+    if (selectedRid === OPEN_CODE && !rooms[OPEN_CODE]) {
+      $('joinBtn').disabled = true;
+      const r = await openApi('openEnsure');
+      $('joinBtn').disabled = false;
+      if (!r.ok) { setLoginError('tErrOpen'); return; }
+    }
     profile = { sid, name };
     enterRoom(selectedRid);
   });
@@ -233,6 +245,7 @@
       .catch((e) => { if (denied(e)) { rulesErr = true; renderStatus(); } });
     beat();
     beatTimer = setInterval(beat, BEAT_MS);
+    if (rid === OPEN_CODE) { openNextTry = 0; openTimer = setInterval(openTick, 1000); }
 
     listen(db.ref(`tetris/rooms/${rid}`), 'value', onRoom);
     listen(db.ref(`tetris/boards/${rid}`), 'value', (s) => { boards = s.val() || {}; scheduleSide(); });
@@ -255,6 +268,7 @@
     subs.forEach((off) => off());
     subs = [];
     clearInterval(beatTimer);
+    clearInterval(openTimer); openTimer = null;
     clearTimeout(hiddenTimer);
     const lref = db.ref(`tetris/lobby/${rid}/${profile.sid}`), bref = db.ref(`tetris/boards/${rid}/${profile.sid}`);
     lref.onDisconnect().cancel(); bref.onDisconnect().cancel();
@@ -272,12 +286,30 @@
     leaveRoom(null);
   });
 
+  // ---------- 오픈 방: 판이 끝나면 다음 판을 자동으로 시작 ----------
+  // 방에 있는 모든 학생이 같은 조건을 확인하고, 조금씩 다른 시각에 서버에 요청합니다 (서버가 한 번만 시작시킴)
+  function openTick() {
+    if (rid !== OPEN_CODE || openBusy || !room) return;
+    if (G && G.alive) return;
+    const game = room.game || null, nt = now();
+    let endAt = 0;
+    if (game) {
+      const e = entries[game.id] || {}, r = results[game.id] || {};
+      if (!C.isFinished(game.id, game, e, r, nt)) return;
+      endAt = Math.max(+game.start || 0, ...Object.values(r).map((x) => +(x && x.t) || 0));
+    }
+    if (nt < endAt + OPEN_GAP + Math.random() * 1500 || nt < openNextTry) return;
+    openNextTry = nt + 3000;
+    openBusy = true;
+    openApi('openStart').finally(() => { openBusy = false; });
+  }
+
   // ---------- 판 진행 ----------
   function onRoom(s) {
     const v = s.val();
     if (!v) { leaveRoom('tRoomGone'); return; }
     room = v;
-    $('roomName').textContent = v.name || '';
+    $('roomName').textContent = (rid === OPEN_CODE ? '🟢 ' : '') + roomTitle(rid, v);
     const game = v.game || null;
     const key = game ? `${game.id}@${game.start}` : null;
     // 판이 바뀌었거나(새 판/초기화) 관리자가 끝냈으면 내 판 종료
@@ -822,13 +854,13 @@
         const big = mine && mine.win ? t('tWinner') : place ? t('tYouPlace', { n: place }) : t('tKO');
         const n = Object.keys(e).length;
         let small = G.endKey ? t(G.endKey) : '';
-        if (finished) small = (n >= 2 && place ? t('tPointsGot', { n: C.placePoints(place, C.roomOpts(room).points) }) + ' · ' : '') + t(allDone ? 'tAllDoneSub' : 'tWaitNext');
+        if (finished) small = (n >= 2 && place ? t('tPointsGot', { n: C.placePoints(place, C.roomOpts(room).points) }) + ' · ' : '') + t(allDone ? 'tAllDoneSub' : rid === OPEN_CODE ? 'tOpenNext' : 'tWaitNext');
         else small = (small ? small + ' · ' : '') + t('tStillPlaying');
         setMsg(big, small);
       }
     } else if (game && !finished) setMsg(t('tSpectating'), t('tSpectatingSub'));
     else if (allDone) setMsg(t('tStAllDone'), t('tAllDoneSub'));
-    else setMsg(t('tWaiting'), t('tWaitingSub'));
+    else setMsg(t('tWaiting'), t(rid === OPEN_CODE ? 'tOpenWaitingSub' : 'tWaitingSub'));
   }
   function renderStats() {
     if (!G) {

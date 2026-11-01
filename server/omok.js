@@ -95,8 +95,8 @@ export function fiveFrom(board, pos) {
 
 // 학번이 숫자(1, 2, 3…)면 Firebase 가 객체 대신 배열(빈 칸은 null)로 돌려주므로 객체로 맞춤
 const objOf = (v) => Object.fromEntries(Object.entries(v || {}).filter(([, x]) => x != null));
-const movesOf = (g) => (Array.isArray(g.mv) ? g.mv : Object.values(g.mv || {})).map(Number);
-const turnOf = (g) => (movesOf(g).length % 2 === 0 ? 'b' : 'w');
+export const movesOf = (g) => (Array.isArray(g.mv) ? g.mv : Object.values(g.mv || {})).map(Number);
+export const turnOf = (g) => (movesOf(g).length % 2 === 0 ? 'b' : 'w');
 const deadline = (g, meta) => (Number(g.at) || 0) + (Number(meta.moveTime) || 30) * 1000;
 
 async function loadLeague(env, code) {

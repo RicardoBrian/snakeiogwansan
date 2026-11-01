@@ -3,13 +3,15 @@
 
 import { ApiError, cleanEnv, envReady, json } from '../../server/firebase.js';
 import { OMOK_PLAYER } from '../../server/omok.js';
+import { OMOK_PRACTICE } from '../../server/omok-practice.js';
 
 export async function onRequestPost({ request, env: rawEnv }) {
   const env = cleanEnv(rawEnv);
   if (!envReady(env)) return json({ ok: false, code: 'env_missing' }, 500);
   let body;
   try { body = await request.json(); } catch (e) { return json({ ok: false, code: 'bad_request' }, 400); }
-  const fn = Object.prototype.hasOwnProperty.call(OMOK_PLAYER, body.action) ? OMOK_PLAYER[body.action] : null;
+  const ACTIONS = Object.assign({}, OMOK_PLAYER, OMOK_PRACTICE);
+  const fn = Object.prototype.hasOwnProperty.call(ACTIONS, body.action) ? ACTIONS[body.action] : null;
   if (!fn) return json({ ok: false, code: 'unknown_action' }, 400);
 
   try {

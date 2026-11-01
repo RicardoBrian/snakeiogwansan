@@ -12,7 +12,7 @@ Admin.register((() => {
 
   const room = () => (sel && rooms[sel]) || null;
   const game = () => (room() && room().game) || null;
-  const sortedCodes = () => Object.keys(rooms).sort((a, b) => (+rooms[b].created || 0) - (+rooms[a].created || 0));
+  const sortedCodes = () => Object.keys(rooms).filter((c) => c !== '0000').sort((a, b) => (+rooms[b].created || 0) - (+rooms[a].created || 0));
   const freshLobby = (code) => {
     const out = {}, lob = lobbyAll[code] || {}, nt = now();
     for (const sid of Object.keys(lob)) if (lob[sid] && nt - (+lob[sid].t || 0) < STALE_MS) out[sid] = lob[sid];

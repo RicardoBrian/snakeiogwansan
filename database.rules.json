@@ -124,6 +124,20 @@
     "omokIndex": {
       ".write": false
     },
+    "omokPractice": {
+      "players": {
+        ".write": false
+      },
+      "tables": {
+        ".write": false
+      },
+      "online": {
+        "$sid": {
+          ".write": "$sid.matches(/^[0-9A-Za-z]{1,12}$/)",
+          ".validate": "newData.hasChild('t')"
+        }
+      }
+    },
     "tetris": {
       "rooms": {
         ".write": false

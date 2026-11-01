@@ -8,7 +8,7 @@
 //   attacks/{code}/{학번}/{id}     { l(줄 수), g, f }  받을 공격
 // 판 진행(블록 놓기, 공격)은 학생 브라우저끼리 주고받고, 방/판 시작·종료만 서버(여기)가 씁니다.
 
-import { ApiError, fb, int, roomCode } from './firebase.js';
+import { ApiError, fb, fbTx, int, roomCode } from './firebase.js';
 
 const COUNTDOWN_MS = 5000; // 시작 버튼 → 실제 시작까지
 const ROOM_DATA = ['lobby', 'entries', 'results', 'boards', 'attacks'];
@@ -78,5 +78,69 @@ export const TETRIS_ADMIN = {
     await fb(env, 'DELETE', `tetris/rooms/${code}`);
     for (const k of ROOM_DATA) await fb(env, 'DELETE', `tetris/${k}/${code}`);
     return {};
+  }
+};
+
+// ===================== 오픈 방 (연습) — 학생이 누르면 되는 작업, 비밀번호 없음 =====================
+// 코드 '0000' 방은 선생님 없이 계속 열려 있음. 판이 끝나면 방에 있는 학생의 브라우저가 다음 판을 요청하고,
+// 서버가 판이 정말 끝났는지·그 사이에 다른 학생이 먼저 시작하지 않았는지 확인한 뒤 한 번만 시작합니다.
+export const OPEN_CODE = '0000';
+const OPEN_GAP_MS = 5500;   // 판이 끝난 뒤 결과를 볼 시간
+const OPEN_FRESH_MS = 6000; // 이 안에 접속 신호가 있어야 '방에 있는 학생'
+const OPEN_KEEP = 30;       // 누적 순위에 남기는 최근 판 수 (DB가 계속 커지지 않게)
+
+// 클라이언트(tetris-common.js isFinished)와 같은 기준
+function openFinished(game, entries, results, t) {
+  if (!game || game.over) return true;
+  const sids = Object.keys(entries || {});
+  if (!sids.length) return t > Number(game.start) + 3000;
+  const alive = sids.filter((s) => { const r = (results || {})[s]; return !r || r.win || r.stop; }).length;
+  return alive <= (sids.length >= 2 ? 1 : 0);
+}
+
+async function ensureOpenRoom(env) {
+  if ((await fb(env, 'GET', `tetris/rooms/${OPEN_CODE}/name`)) !== null) return;
+  await fb(env, 'PUT', `tetris/rooms/${OPEN_CODE}`, {
+    name: 'OPEN', created: 0, open: true,
+    opts: { games: 0, levelSec: 30, pressureFrom: 120, points: DEFAULT_POINTS }
+  });
+}
+
+export const TETRIS_PLAYER = {
+  async openEnsure(env) {
+    await ensureOpenRoom(env);
+    return {};
+  },
+
+  async openStart(env) {
+    const t = Date.now();
+    await ensureOpenRoom(env);
+    const [game, lobby] = await Promise.all([
+      fb(env, 'GET', `tetris/rooms/${OPEN_CODE}/game`),
+      fb(env, 'GET', `tetris/lobby/${OPEN_CODE}`)
+    ]);
+    const here = Object.values(lobby || {}).filter((v) => v && t - (Number(v.t) || 0) < OPEN_FRESH_MS).length;
+    if (!here) throw new ApiError('empty', 409);
+    const prevNo = game ? Number(game.no) || 0 : 0;
+    if (game) {
+      const [entries, results] = await Promise.all([
+        fb(env, 'GET', `tetris/entries/${OPEN_CODE}/${game.id}`),
+        fb(env, 'GET', `tetris/results/${OPEN_CODE}/${game.id}`)
+      ]);
+      if (!openFinished(game, entries, results, t)) throw new ApiError('not_finished', 409);
+      const endAt = Math.max(Number(game.start) || 0, ...Object.values(results || {}).map((r) => Number(r && r.t) || 0));
+      if (t < endAt + OPEN_GAP_MS) throw new ApiError('too_soon', 409);
+    }
+    const no = prevNo + 1;
+    const next = { no, id: 'g' + no, seed: Math.floor(Math.random() * 2147483647), start: t + COUNTDOWN_MS };
+    // 동시에 여러 학생이 요청해도 한 번만: 그 사이 판 번호가 바뀌었으면 쓰지 않음
+    const cur = await fbTx(env, `tetris/rooms/${OPEN_CODE}/game`, (g) => ((g ? Number(g.no) || 0 : 0) === prevNo ? next : undefined));
+    if (cur !== next) return { already: true };
+    await fb(env, 'DELETE', `tetris/attacks/${OPEN_CODE}`);
+    if (no > OPEN_KEEP) {
+      const old = 'g' + (no - OPEN_KEEP);
+      await Promise.all([fb(env, 'DELETE', `tetris/entries/${OPEN_CODE}/${old}`), fb(env, 'DELETE', `tetris/results/${OPEN_CODE}/${old}`)]);
+    }
+    return { no };
   }
 };

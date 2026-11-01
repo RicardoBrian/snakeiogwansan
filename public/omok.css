@@ -22,7 +22,7 @@ button.ghost { background: transparent; color: #9aa7c2; border: 1px solid #33405
 button.ghost:hover { background: #1f2840; }
 button.small { width: auto; padding: 6px 12px; font-size: 14px; margin: 0; }
 
-#app { max-width: 1180px; margin: 0 auto; padding: 12px 16px 32px; }
+#app, #practice { max-width: 1180px; margin: 0 auto; padding: 12px 16px 32px; }
 .top { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding-right: 210px; min-height: 36px; }
 .lg-name { font-size: 20px; font-weight: 700; }
 .code-chip { background: #0f1522; border: 1px solid #33405e; border-radius: 999px; padding: 3px 12px; color: #fde047; font-weight: 700; }
@@ -48,7 +48,7 @@ button.small { width: auto; padding: 6px 12px; font-size: 14px; margin: 0; }
 .stone.b { background: radial-gradient(circle at 35% 35%, #666, #0a0a0a); }
 .stone.w { background: radial-gradient(circle at 35% 35%, #fff, #cfcfcf); }
 .board-wrap { display: flex; justify-content: center; }
-#boardCv { width: min(100%, calc(100vh - 230px), 720px); min-width: 280px; aspect-ratio: 1; border-radius: 8px;
+#boardCv, #pBoardCv { width: min(100%, calc(100vh - 230px), 720px); min-width: 280px; aspect-ratio: 1; border-radius: 8px;
   cursor: pointer; touch-action: manipulation; box-shadow: 0 8px 30px rgba(0,0,0,.4); }
 .match-foot { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: 10px; }
 #turnText { font-weight: 700; font-size: 17px; }
@@ -83,12 +83,22 @@ td.r-w { color: #4ade80; }
 
 @media (max-width: 900px) {
   .layout { grid-template-columns: minmax(0, 1fr); }
-  #boardCv { width: min(100%, 720px); }
+  #boardCv, #pBoardCv { width: min(100%, 720px); }
 }
 @media (max-width: 600px) {
   .top { padding-right: 0; padding-top: 40px; }
   .status { font-size: 16px; }
-  #app { padding: 8px 10px 24px; }
+  #app, #practice { padding: 8px 10px 24px; }
   .match { padding: 8px; }
   .card { padding: 22px 18px; }
 }
+
+/* 연습 모드 */
+.foot-btns { display: flex; gap: 8px; }
+.box h3.gap { margin-top: 14px; }
+#pTblList td, #pOnlineList td { white-space: normal; }
+#pTblList button { width: auto; margin: 0; padding: 4px 10px; font-size: 13px; }
+#pTblList tr.on td { background: #1f2840; }
+#pCreateBtn { margin-top: 0; }
+.dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: #22c55e; margin-right: 6px; }
+.dot.busy { background: #fbbf24; }

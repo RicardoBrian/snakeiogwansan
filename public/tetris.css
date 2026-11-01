@@ -31,6 +31,7 @@ h3.pick { margin: 10px 0 8px; font-size: 14px; color: #9aa7c2; text-align: left;
   background: #0f1522; color: #e8ecf4; border: 1px solid #33405e; font-size: 15px; text-align: left; }
 .roomBtn:hover { background: #1f2840; }
 .roomBtn span { color: #9aa7c2; font-size: 13px; font-weight: normal; white-space: nowrap; }
+.roomBtn.open { border-color: #166534; }
 .roomBtn.sel { border-color: #4ade80; background: #12301f; }
 
 .field { display: flex; align-items: center; justify-content: space-between; gap: 12px; text-align: left; font-size: 14px; color: #c4cde0; }

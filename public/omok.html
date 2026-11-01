@@ -5,9 +5,9 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Omok League</title>
 <link rel="icon" href="data:,">
-<link rel="stylesheet" href="fonts/fonts.css?v=20261020c">
-<link rel="stylesheet" href="common.css?v=20261020c">
-<link rel="stylesheet" href="omok.css?v=20261020c">
+<link rel="stylesheet" href="fonts/fonts.css?v=20261101a">
+<link rel="stylesheet" href="common.css?v=20261101a">
+<link rel="stylesheet" href="omok.css?v=20261101a">
 </head>
 <body>
 
@@ -20,6 +20,7 @@
       <input id="sidInput" data-i18n-ph="sidPh" maxlength="12" inputmode="numeric">
       <input id="nameInput" data-i18n-ph="namePh" maxlength="10">
       <button id="joinBtn" type="submit" data-i18n="oJoin"></button>
+      <button id="practiceBtn" type="button" class="ghost" data-i18n="oPractice"></button>
     </form>
     <p id="loginError" class="error"></p>
     <p id="connText" class="muted"></p>
@@ -71,15 +72,55 @@
   </main>
 </div>
 
+<div id="practice" class="hidden">
+  <header class="top">
+    <span class="lg-name" data-i18n="pTitle"></span>
+    <span id="pMe" class="me-text"></span>
+    <button id="pLeaveBtn" type="button" class="ghost small" data-i18n="oLeave"></button>
+  </header>
+  <div id="pStatus" class="status"></div>
+  <main class="layout">
+    <section id="pMatchBox" class="match hidden">
+      <div id="pWatchBar" class="watch-bar hidden"><span id="pWatchText"></span></div>
+      <div class="players">
+        <div id="pPB" class="pl"><span class="stone b"></span><span class="pl-name"></span><span class="pl-time"></span></div>
+        <div id="pPW" class="pl"><span class="stone w"></span><span class="pl-name"></span><span class="pl-time"></span></div>
+      </div>
+      <div class="board-wrap"><canvas id="pBoardCv"></canvas></div>
+      <div class="match-foot">
+        <span id="pTurnText"></span>
+        <span class="foot-btns">
+          <button id="pRematchBtn" type="button" class="small hidden"></button>
+          <button id="pResignBtn" type="button" class="ghost small hidden" data-i18n="oResign"></button>
+          <button id="pCloseBtn" type="button" class="ghost small hidden"></button>
+        </span>
+      </div>
+      <p id="pHint" class="muted"></p>
+    </section>
+    <section class="side">
+      <div class="box">
+        <button id="pCreateBtn" type="button" data-i18n="pCreate"></button>
+        <h3 class="gap" data-i18n="pTables"></h3>
+        <div class="scroll"><table id="pTblList"></table></div>
+      </div>
+      <div class="box">
+        <h3 id="pOnlineTitle"></h3>
+        <div class="scroll"><table id="pOnlineList"></table></div>
+      </div>
+    </section>
+  </main>
+</div>
+
 <div id="countdown" class="hidden"><div id="countdownSub"></div><div id="countdownNum"></div></div>
 <div id="toast"></div>
 
-<script src="i18n.js?v=20261020c"></script>
-<script src="omok-i18n.js?v=20261020c"></script>
-<script src="lib/firebase-app-compat.js?v=20261020c"></script>
-<script src="lib/firebase-database-compat.js?v=20261020c"></script>
+<script src="i18n.js?v=20261101a"></script>
+<script src="omok-i18n.js?v=20261101a"></script>
+<script src="lib/firebase-app-compat.js?v=20261101a"></script>
+<script src="lib/firebase-database-compat.js?v=20261101a"></script>
 <script src="api/config"></script>
-<script src="omok-core.js?v=20261020c"></script>
-<script src="omok.js?v=20261020c"></script>
+<script src="omok-core.js?v=20261101a"></script>
+<script src="omok.js?v=20261101a"></script>
+<script src="omok-practice.js?v=20261101a"></script>
 </body>
 </html>
